@@ -1,0 +1,684 @@
+<!-- ... existing code -->
+    function updateActiveUserHeader() {
+      const current = state.participants.find(p => p.id === state.activeUser);
+      const nameEl = document.getElementById('header-user-name') || document.getElementById('active-user-name');
+      const xpEl = document.getElementById('header-user-xp') || document.getElementById('active-user-xp');
+      const badgeEl = document.getElementById('nav-participant-badge') || document.getElementById('participant-count-badge');
+
+      if (badgeEl) {
+        badgeEl.innerText = state.participants.length;
+      }
+
+      if (nameEl) {
+        nameEl.innerText = current ? current.name : "Geen Deelnemer";
+      }
+
+      if (xpEl) {
+        xpEl.innerText = current ? `${current.xp || 0} XP` : "0 XP";
+      }
+
+      updateSyncIndicator();
+    }
+
+    let dbInstance = null;
+    let authInstance = null;
+    let currentUserUid = null;
+    let firestoreUnsubs = [];
+    state.isLive = false;
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'fow-workshop-board';
+
+    function updateSyncIndicator() {
+      let syncBadge = document.getElementById('live-sync-indicator');
+      if (!syncBadge) {
+        const headerRight = document.querySelector('header .flex.items-center.gap-3');
+        if (headerRight) {
+          syncBadge = document.createElement('button');
+          syncBadge.id = 'live-sync-indicator';
+          syncBadge.onclick = () => openSyncConfigModal();
+          headerRight.prepend(syncBadge);
+        }
+      }
+
+      if (syncBadge) {
+        if (state.isLive) {
+          syncBadge.className = 'px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 shadow-sm transition hover:bg-emerald-900/60 cursor-pointer';
+          syncBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>Live Synchroon (${state.participants.length} deelnemers)</span>`;
+          syncBadge.title = 'Realtime verbonden! Iedereen ziet direct elkaars post-its en stemmen.';
+        } else {
+          syncBadge.className = 'px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/50 transition cursor-pointer';
+          syncBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span>Lokaal (Klik voor Live Sync)</span>`;
+          syncBadge.title = 'Klik om realtime cloud synchronisatie te koppelen voor je team.';
+        }
+      }
+    }
+
+    async function initRealtimeCloud() {
+      let config = null;
+
+      try {
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+          config = JSON.parse(__firebase_config);
+        } else if (window.CUSTOM_FIREBASE_CONFIG) {
+          config = window.CUSTOM_FIREBASE_CONFIG;
+        }
+      } catch (e) {
+        console.warn("Geen standaard configuratie gevonden:", e);
+      }
+
+      if (!config) {
+        updateSyncIndicator();
+        return;
+      }
+
+      try {
+        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+        const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+        const { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+        const app = initializeApp(config);
+        authInstance = getAuth(app);
+        dbInstance = getFirestore(app);
+
+        // Custom token priority with fallback to anonymous auth
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(authInstance, __initial_auth_token);
+        } else {
+          await signInAnonymously(authInstance);
+        }
+
+        const user = authInstance.currentUser;
+        if (!user) {
+          console.warn("Geen geauthenticeerde gebruiker verkregen.");
+          return;
+        }
+        currentUserUid = user.uid;
+        state.isLive = true;
+        updateSyncIndicator();
+        showToast("Verbonden met Live Sessie! 🚀");
+
+        setupRealtimeSubscriptions(dbInstance, { collection, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot });
+      } catch (err) {
+        console.error("Fout bij starten realtime sessie:", err);
+        state.isLive = false;
+        updateSyncIndicator();
+      }
+    }
+
+    function setupRealtimeSubscriptions(db, fns) {
+      firestoreUnsubs.forEach(unsub => unsub && unsub());
+      firestoreUnsubs = [];
+
+      // 1. Pillars Collection
+      const pillarsCol = fns.collection(db, 'artifacts', appId, 'public', 'data', 'pillars');
+      const unsubPillars = fns.onSnapshot(pillarsCol, (snapshot) => {
+        if (snapshot.empty) {
+          // Initial seed if first time run
+          PILLARS_CONFIG.forEach(p => {
+            fns.setDoc(fns.doc(db, 'artifacts', appId, 'public', 'data', 'pillars', p.id), p);
+          });
+        } else {
+          state.pillars = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderPillars();
+          if (state.activeTab === 'overzicht') renderOverview();
+        }
+      }, (error) => {
+        console.error("Fout bij synchroniseren pilaren:", error);
+      });
+      firestoreUnsubs.push(unsubPillars);
+
+      // 2. Participants Collection
+      const partsCol = fns.collection(db, 'artifacts', appId, 'public', 'data', 'participants');
+      const unsubParticipants = fns.onSnapshot(partsCol, (snapshot) => {
+        if (!snapshot.empty) {
+          state.participants = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (!state.activeUser && state.participants.length > 0) {
+            state.activeUser = state.participants[0].id;
+          }
+          updateActiveUserHeader();
+          if (state.activeTab === 'deelnemers') renderParticipants();
+          if (state.activeTab === 'overzicht') renderOverview();
+        }
+      }, (error) => {
+        console.error("Fout bij synchroniseren deelnemers:", error);
+      });
+      firestoreUnsubs.push(unsubParticipants);
+
+      // 3. Notes Collection
+      const notesCol = fns.collection(db, 'artifacts', appId, 'public', 'data', 'notes');
+      const unsubNotes = fns.onSnapshot(notesCol, (snapshot) => {
+        state.notes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (state.activeTab === 'brainstorm') renderPillars();
+        if (state.activeTab === 'overzicht') renderOverview();
+      }, (error) => {
+        console.error("Fout bij synchroniseren post-its:", error);
+      });
+      firestoreUnsubs.push(unsubNotes);
+
+      // 4. Tasks Collection
+      const tasksCol = fns.collection(db, 'artifacts', appId, 'public', 'data', 'tasks');
+      const unsubTasks = fns.onSnapshot(tasksCol, (snapshot) => {
+        if (snapshot.empty) {
+          DEFAULT_TASKS.forEach(t => {
+            fns.setDoc(fns.doc(db, 'artifacts', appId, 'public', 'data', 'tasks', t.id), t);
+          });
+        } else {
+          state.tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (state.activeTab === 'overzicht') renderTasks();
+        }
+      }, (error) => {
+        console.error("Fout bij synchroniseren taken:", error);
+      });
+      firestoreUnsubs.push(unsubTasks);
+    }
+
+    function setActiveUser(participantId) {
+      state.activeUser = participantId;
+      updateActiveUserHeader();
+      refreshAll();
+      const user = state.participants.find(p => p.id === participantId);
+      if (user) {
+        showToast(`Ingelogd als: ${user.name}`);
+      }
+    }
+
+    function renderParticipants() {
+      const container = document.getElementById('participant-list-container');
+      const countEl = document.getElementById('count-participants');
+      if (!container) return;
+
+      if (countEl) {
+        countEl.innerText = state.participants.length;
+      }
+      container.innerHTML = '';
+
+      if (state.participants.length === 0) {
+        container.innerHTML = `
+          <div class="text-center p-8 text-slate-400">
+            Nog geen deelnemers. Voeg de eerste deelnemer toe via de knop hierboven!
+          </div>
+        `;
+        return;
+      }
+
+      state.participants.forEach(p => {
+        const isActive = p.id === state.activeUser;
+        const card = document.createElement('div');
+        const userNotes = state.notes.filter(n => n.authorId === p.id).length;
+        const userVotes = p.votedNoteIds ? p.votedNoteIds.length : 0;
+
+        const assignedPillarObj = state.pillars.find(pil => pil.id === p.assignedPillar);
+        const pillarDisplayName = assignedPillarObj ? assignedPillarObj.title : (p.assignedPillar || 'Allround');
+
+        card.className = `p-4 rounded-xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${isActive ? 'bg-indigo-950/40 border-indigo-500/60 shadow-lg' : 'bg-slate-900/60 border-slate-800'}`;
+
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-white text-sm">
+              ${escapeHtml(p.name.substring(0, 2).toUpperCase())}
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-white">${escapeHtml(p.name)}</span>
+                ${isActive ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">Actief</span>' : ''}
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5">
+                <span>${escapeHtml(p.role || 'Consultant')}</span>
+                <span class="mx-1">•</span>
+                <span class="text-indigo-400 font-medium">Pilaar: ${escapeHtml(pillarDisplayName)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 self-end sm:self-center">
+            <div class="text-right mr-2">
+              <span class="text-xs font-black text-amber-400 block">${p.xp || 0} XP</span>
+              <span class="text-[10px] text-slate-400">${userNotes} notes • ${userVotes} votes</span>
+            </div>
+
+            ${!isActive ? `
+              <button onclick="setActiveUser('${p.id}')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700">
+                Activeer
+              </button>
+            ` : ''}
+
+            <button onclick="deleteParticipant('${p.id}')" class="p-2 rounded-lg bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700 transition" title="Verwijder deelnemer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderOverview() {
+      const totalParticipants = state.participants.length;
+      const totalNotes = state.notes.length;
+      const totalVotes = state.notes.reduce((acc, curr) => acc + (curr.votes || 0), 0);
+      const totalXp = state.participants.reduce((acc, curr) => acc + (curr.xp || 0), 0);
+
+      const elPart = document.getElementById('stat-participants-count');
+      if (elPart) elPart.innerText = totalParticipants;
+      const elNotes = document.getElementById('stat-notes-count');
+      if (elNotes) elNotes.innerText = totalNotes;
+      const elVotes = document.getElementById('stat-votes-count');
+      if (elVotes) elVotes.innerText = totalVotes;
+      const elXp = document.getElementById('stat-session-xp');
+      if (elXp) elXp.innerText = totalXp;
+
+      const matrixContainer = document.getElementById('matrix-pillars-container');
+      if (matrixContainer) {
+        matrixContainer.innerHTML = '';
+
+        state.pillars.forEach((pil, index) => {
+          const theme = PILLAR_THEMES[pil.color] || PILLAR_THEMES.indigo;
+          const assignedMembers = state.participants.filter(p => p.assignedPillar === pil.id);
+          const col = document.createElement('div');
+          col.className = `p-4 rounded-xl border ${theme.matrixBg} space-y-2.5`;
+          col.innerHTML = `
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h4 class="text-xs font-bold text-white truncate pr-1">Pilaar ${index + 1}: ${escapeHtml(pil.title)}</h4>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold whitespace-nowrap">${assignedMembers.length} leden</span>
+            </div>
+            <div class="space-y-1.5 min-h-[90px]">
+              ${assignedMembers.length > 0 ? assignedMembers.map(m => `
+                <div class="flex items-center justify-between text-xs p-1.5 rounded-lg bg-slate-900/60 border border-slate-800/80">
+                  <span class="font-medium text-slate-200">👤 ${escapeHtml(m.name)}</span>
+                  <span class="text-amber-400 text-[10px] font-bold">${m.xp || 0} XP</span>
+                </div>
+              `).join('') : '<div class="text-[11px] text-slate-500 italic">Nog niemand toegewezen</div>'}
+            </div>
+          `;
+          matrixContainer.appendChild(col);
+        });
+      }
+
+      renderTasks();
+
+      const tableBody = document.getElementById('leaderboard-table-body');
+      if (tableBody) {
+        tableBody.innerHTML = '';
+
+        const sortedParticipants = [...state.participants].sort((a, b) => (b.xp || 0) - (a.xp || 0));
+
+        if (sortedParticipants.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-500">Geen data beschikbaar</td></tr>`;
+          return;
+        }
+
+        sortedParticipants.forEach((p, index) => {
+          const userNotesCount = state.notes.filter(n => n.authorId === p.id).length;
+          const userVotesCount = p.votedNoteIds ? p.votedNoteIds.length : 0;
+          const userTasksCount = state.tasks.filter(t => t.assignedToId === p.id).length;
+          const rankMedal = index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : `#${index + 1}`));
+
+          const assignedPillarObj = state.pillars.find(pil => pil.id === p.assignedPillar);
+          const pillarLabel = assignedPillarObj ? assignedPillarObj.title : (p.assignedPillar || 'Allround');
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-900/40 transition";
+          tr.innerHTML = `
+            <td class="py-3 px-4 font-bold text-white flex items-center gap-2">
+              <span>${rankMedal}</span>
+              <span>${escapeHtml(p.name)}</span>
+            </td>
+            <td class="py-3 px-4 text-slate-400">${escapeHtml(p.role || 'Consultant')}</td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-indigo-300 border border-slate-700">
+                ${escapeHtml(pillarLabel)}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-center font-bold text-indigo-400">${userNotesCount}</td>
+            <td class="py-3 px-4 text-center font-bold text-emerald-400">${userVotesCount}</td>
+            <td class="py-3 px-4 text-center font-black text-amber-400">${userTasksCount > 0 ? `+${userTasksCount * 50} (${userTasksCount})` : '0'}</td>
+            <td class="py-3 px-4 text-right font-black text-amber-400 text-sm">${p.xp || 0} XP</td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      }
+    }
+
+    async function saveNote(e) {
+      e.preventDefault();
+      const text = document.getElementById('note-text').value.trim();
+      const pillarId = document.getElementById('note-pillar-select').value;
+      const category = document.getElementById('note-category-select').value;
+      const authorId = document.getElementById('note-author-select').value;
+
+      if (!text) return;
+
+      const authorObj = state.participants.find(p => p.id === authorId) || { name: 'Anoniem' };
+      const newNote = {
+        pillarId,
+        text,
+        category,
+        authorId,
+        authorName: authorObj.name,
+        votes: 0,
+        voterIds: [],
+        createdAt: Date.now()
+      };
+
+      if (state.isLive && dbInstance) {
+        try {
+          const { collection, addDoc, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          await addDoc(collection(dbInstance, 'artifacts', appId, 'public', 'data', 'notes'), newNote);
+          
+          if (authorObj.id) {
+            const newXp = (authorObj.xp || 0) + 10;
+            await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', authorObj.id), { xp: newXp });
+          }
+        } catch (err) {
+          console.error("Fout bij opslaan realtime post-it:", err);
+        }
+      } else {
+        newNote.id = 'note-' + Date.now();
+        state.notes.push(newNote);
+        if (authorObj.id) {
+          authorObj.xp = (authorObj.xp || 0) + 10;
+        }
+        refreshAll();
+      }
+
+      showToast(`Post-it geplaatst! +10 XP voor ${authorObj.name}`);
+      closeNoteModal();
+    }
+
+    async function upvoteNote(noteId) {
+      if (!state.activeUser) {
+        showToast("Selecteer eerst een actieve deelnemer rechtsboven!");
+        return;
+      }
+
+      const note = state.notes.find(n => n.id === noteId);
+      const activeUserObj = state.participants.find(p => p.id === state.activeUser);
+      if (!note || !activeUserObj) return;
+
+      note.voterIds = note.voterIds || [];
+      activeUserObj.votedNoteIds = activeUserObj.votedNoteIds || [];
+
+      if (note.voterIds.includes(state.activeUser)) {
+        showToast("Je hebt al op deze stelling gestemd!");
+        return;
+      }
+
+      if (state.isLive && dbInstance) {
+        try {
+          const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          const updatedVoterIds = [...note.voterIds, state.activeUser];
+          const updatedUserVoted = [...activeUserObj.votedNoteIds, noteId];
+          const newXp = (activeUserObj.xp || 0) + 5;
+
+          await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'notes', noteId), {
+            votes: (note.votes || 0) + 1,
+            voterIds: updatedVoterIds
+          });
+
+          await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', state.activeUser), {
+            xp: newXp,
+            votedNoteIds: updatedUserVoted
+          });
+        } catch (err) {
+          console.error("Fout bij realtime stemmen:", err);
+        }
+      } else {
+        note.votes = (note.votes || 0) + 1;
+        note.voterIds.push(state.activeUser);
+        activeUserObj.votedNoteIds.push(noteId);
+        activeUserObj.xp = (activeUserObj.xp || 0) + 5;
+        refreshAll();
+      }
+
+      showToast(`Stem uitgebracht! +5 XP voor ${activeUserObj.name}`);
+    }
+
+    async function deleteNote(noteId) {
+      if (state.isLive && dbInstance) {
+        try {
+          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          await deleteDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'notes', noteId));
+        } catch (err) {
+          console.error("Fout bij realtime verwijderen note:", err);
+        }
+      } else {
+        state.notes = state.notes.filter(n => n.id !== noteId);
+        refreshAll();
+      }
+      showToast("Post-it verwijderd");
+    }
+
+    async function saveParticipant(e) {
+      e.preventDefault();
+      const name = document.getElementById('participant-name-input').value.trim();
+      const role = document.getElementById('participant-role-input').value.trim();
+      const assignedPillar = document.getElementById('participant-pillar-select').value;
+
+      if (!name) return;
+
+      const newP = {
+        name,
+        role: role || 'Consultant',
+        assignedPillar,
+        xp: 0,
+        votedNoteIds: []
+      };
+
+      if (state.isLive && dbInstance) {
+        try {
+          const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          const ref = await addDoc(collection(dbInstance, 'artifacts', appId, 'public', 'data', 'participants'), newP);
+          state.activeUser = ref.id;
+        } catch (err) {
+          console.error("Fout bij realtime toevoegen deelnemer:", err);
+        }
+      } else {
+        newP.id = 'p-' + Date.now();
+        state.participants.push(newP);
+        state.activeUser = newP.id;
+        refreshAll();
+      }
+
+      showToast(`Deelnemer ${name} toegevoegd!`);
+      closeParticipantModal();
+    }
+
+    async function deleteParticipant(id) {
+      if (state.isLive && dbInstance) {
+        try {
+          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          await deleteDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', id));
+        } catch (err) {
+          console.error("Fout bij realtime verwijderen deelnemer:", err);
+        }
+      } else {
+        state.participants = state.participants.filter(p => p.id !== id);
+        if (state.activeUser === id) {
+          state.activeUser = state.participants.length > 0 ? state.participants[0].id : null;
+        }
+        refreshAll();
+      }
+      showToast("Deelnemer verwijderd");
+    }
+
+    async function claimTask(taskId, participantId) {
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const prevAssignedId = task.assignedToId;
+      const targetUser = state.participants.find(p => p.id === participantId);
+      const newAssignedName = targetUser ? targetUser.name : null;
+      const newAssignedId = participantId || null;
+
+      if (state.isLive && dbInstance) {
+        try {
+          const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'tasks', taskId), {
+            assignedToId: newAssignedId,
+            assignedToName: newAssignedName
+          });
+
+          if (prevAssignedId && prevAssignedId !== newAssignedId) {
+            const prevUser = state.participants.find(p => p.id === prevAssignedId);
+            if (prevUser) {
+              await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', prevAssignedId), {
+                xp: Math.max(0, (prevUser.xp || 0) - 50)
+              });
+            }
+          }
+
+          if (targetUser) {
+            await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', targetUser.id), {
+              xp: (targetUser.xp || 0) + 50
+            });
+          }
+        } catch (err) {
+          console.error("Fout bij realtime claimen van taak:", err);
+        }
+      } else {
+        if (prevAssignedId && prevAssignedId !== newAssignedId) {
+          const prevUser = state.participants.find(p => p.id === prevAssignedId);
+          if (prevUser) prevUser.xp = Math.max(0, (prevUser.xp || 0) - 50);
+        }
+        if (targetUser) {
+          targetUser.xp = (targetUser.xp || 0) + 50;
+        }
+        task.assignedToId = newAssignedId;
+        task.assignedToName = newAssignedName;
+        refreshAll();
+      }
+
+      showToast(targetUser ? `Taak toegewezen aan ${targetUser.name}! (+50 XP)` : "Taak vrijgegeven");
+    }
+
+    async function saveNewPillar(e) {
+      e.preventDefault();
+      const title = document.getElementById('pillar-title-input').value.trim();
+      const color = document.getElementById('pillar-color-select').value;
+      const question = document.getElementById('pillar-question-input').value.trim() ||
+        "Hoe positioneren we deze pilaar als doorslaggevende enterprise differentiator richting 2030?";
+
+      if (!title) return;
+
+      const newPil = {
+        title,
+        color,
+        question,
+        createdAt: Date.now()
+      };
+
+      if (state.isLive && dbInstance) {
+        try {
+          const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          await addDoc(collection(dbInstance, 'artifacts', appId, 'public', 'data', 'pillars'), newPil);
+        } catch (err) {
+          console.error("Fout bij toevoegen realtime pilaar:", err);
+        }
+      } else {
+        newPil.id = 'pil-' + Date.now();
+        state.pillars.push(newPil);
+        refreshAll();
+      }
+
+      showToast(`Nieuwe pilaar "${title}" toegevoegd!`);
+      closeAddPillarModal();
+    }
+
+    async function deletePillar(pillarId) {
+      if (state.pillars.length <= 1) {
+        showToast("Je moet minimaal 1 pilaar behouden!");
+        return;
+      }
+
+      if (state.isLive && dbInstance) {
+        try {
+          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          await deleteDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'pillars', pillarId));
+        } catch (err) {
+          console.error("Fout bij verwijderen realtime pilaar:", err);
+        }
+      } else {
+        state.pillars = state.pillars.filter(p => p.id !== pillarId);
+        refreshAll();
+      }
+      showToast("Pilaar verwijderd");
+    }
+
+    function openSyncConfigModal() {
+      let modal = document.getElementById('modal-cloud-sync');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-cloud-sync';
+        modal.className = 'fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+          <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🚀</span>
+                <h3 class="text-base font-bold text-white">Live Multiplayer Sessie</h3>
+              </div>
+              <button onclick="closeSyncConfigModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+            </div>
+            
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Draai je dit live op Netlify of GitHub Pages met je team? Koppel hier eenmalig je gratis cloud-verbinding zodat iedereen elkaars post-its en stemmen live ziet binnenkomen.
+            </p>
+
+            <div class="space-y-2">
+              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Firebase Config JSON snippet (optioneel):</label>
+              <textarea id="custom-sync-config-input" rows="5" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 font-mono focus:outline-none focus:border-indigo-500" placeholder='{\n  "apiKey": "AIzaSy...",\n  "authDomain": "jouw-project.firebaseapp.com",\n  "projectId": "jouw-project"\n}'></textarea>
+            </div>
+
+            <div class="bg-indigo-950/40 border border-indigo-500/30 p-3 rounded-xl text-[11px] text-indigo-300 leading-relaxed">
+              💡 <strong>Tip:</strong> In deze online workspace is de live synchronisatie al automatisch actief! Op Netlify plak je hier simpelweg eenmalig de gratis config van je project.
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+              <button onclick="closeSyncConfigModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Sluiten</button>
+              <button onclick="applyCustomSyncConfig()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md">Verbinden</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeSyncConfigModal() {
+      const modal = document.getElementById('modal-cloud-sync');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function applyCustomSyncConfig() {
+      const input = document.getElementById('custom-sync-config-input').value.trim();
+      if (!input) {
+        showToast("Geen configuratie ingevoerd.");
+        closeSyncConfigModal();
+        return;
+      }
+      try {
+        window.CUSTOM_FIREBASE_CONFIG = JSON.parse(input);
+        closeSyncConfigModal();
+        initRealtimeCloud();
+      } catch (err) {
+        showToast("Ongeldige JSON configuratie!");
+      }
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const t = document.createElement('div');
+      t.className = 'bg-indigo-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl border border-indigo-400/40 flex items-center gap-2 animate-bounce';
+      t.innerHTML = `<span>⚡</span><span>${escapeHtml(message)}</span>`;
+      container.appendChild(t);
+      setTimeout(() => { t.remove(); }, 3500);
+    }
+
+    window.onload = function () {
+      initRealtimeCloud();
+      switchView('brainstorm');
+      updateActiveUserHeader();
+    };
+  </script>
+</body>
+</html>
