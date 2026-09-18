@@ -1,249 +1,935 @@
-<!-- ... existing code -->
-    function updateActiveUserHeader() {
-      const current = state.participants.find(p => p.id === state.activeUser);
-      const nameEl = document.getElementById('header-user-name') || document.getElementById('active-user-name');
-      const xpEl = document.getElementById('header-user-xp') || document.getElementById('active-user-xp');
-      const badgeEl = document.getElementById('nav-participant-badge') || document.getElementById('participant-count-badge');
+<!DOCTYPE html>
+<html lang="nl" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Future of Work — Workshop & Live Playboard</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 for crisp icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-      if (badgeEl) {
-        badgeEl.innerText = state.participants.length;
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
       }
+    }
+  </script>
 
-      if (nameEl) {
-        nameEl.innerText = current ? current.name : "Geen Deelnemer";
-      }
-
-      if (xpEl) {
-        xpEl.innerText = current ? `${current.xp || 0} XP` : "0 XP";
-      }
-
-      updateSyncIndicator();
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.6);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.9);
     }
 
-    let dbInstance = null;
-    let authInstance = null;
-    let currentUserUid = null;
-    let firestoreUnsubs = [];
-    state.isLive = false;
+    /* Pulse animation for XP gains */
+    @keyframes xpGain {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); filter: drop-shadow(0 0 10px #6366f1); }
+      100% { transform: scale(1); }
+    }
+    .animate-xp {
+      animation: xpGain 0.6s ease-out;
+    }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'fow-workshop-board';
+    /* Sticky note fold effect */
+    .sticky-card {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .sticky-card:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+  <!-- Top Executive Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-all">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-black text-lg">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Atos Future of Work</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700/60">
+              Interactive Board
+            </span>
+          </div>
+          <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            FoW Strategic Pillars & Playboard
+          </h1>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center bg-slate-950/80 p-1.5 rounded-xl border border-slate-800 text-sm">
+        <button id="tab-btn-pillars" onclick="switchTab('pillars')" class="px-3.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-sm">
+          <i class="fa-solid fa-table-columns text-xs"></i>
+          <span>💡 Brainstorm Pilaren</span>
+        </button>
+        <button id="tab-btn-participants" onclick="switchTab('participants')" class="px-3.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white">
+          <i class="fa-solid fa-users text-xs"></i>
+          <span>👥 Deelnemers</span>
+        </button>
+        <button id="tab-btn-overview" onclick="switchTab('overview')" class="px-3.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white">
+          <i class="fa-solid fa-trophy text-xs"></i>
+          <span>📊 Overzicht & XP</span>
+        </button>
+      </nav>
+
+      <!-- Live Sync & Active User Controls -->
+      <div class="flex items-center gap-3">
+        <!-- Live Sync Status Button -->
+        <button onclick="openCloudModal()" id="sync-badge" class="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer" title="Klik voor Cloud Sync details">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span id="sync-status-text">Cloud Synchronisatie</span>
+        </button>
+
+        <!-- Current User Profile Card -->
+        <div onclick="openParticipantModal()" class="cursor-pointer group flex items-center gap-2.5 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl transition-all shadow-sm" title="Klik om van actieve deelnemer te wisselen of naam te wijzigen">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <div class="text-left leading-none">
+            <div class="flex items-center gap-1.5">
+              <span id="header-user-name" class="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">Selecteer Profiel</span>
+              <i class="fa-solid fa-angle-down text-[10px] text-slate-400"></i>
+            </div>
+            <div class="text-[10px] text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
+              <i class="fa-solid fa-bolt text-[9px]"></i>
+              <span id="header-user-xp">0 XP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Application Content Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 flex flex-col">
+    
+    <!-- VIEW 1: BRAINSTORM PILAREN -->
+    <div id="view-pillars" class="flex-1 flex flex-col space-y-6">
+      
+      <!-- Top Actions Banner -->
+      <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80">
+        <div>
+          <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+            <span>Strategische Pilaren Brainstorm</span>
+            <span class="text-xs font-medium px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
+              Open Brainstorm
+            </span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">
+            Plak post-its onder de 5 kernvragen per pilaar. 
+            <span class="text-amber-400 font-semibold">+10 XP</span> per post-it, 
+            <span class="text-amber-400 font-semibold">+5 XP</span> per stem.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="openAddPillarModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold flex items-center gap-2 border border-slate-700 transition-all shadow-sm">
+            <i class="fa-solid fa-plus text-indigo-400"></i>
+            <span>+ Pilaar Toevoegen</span>
+          </button>
+          <button onclick="openAddNoteModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all">
+            <i class="fa-solid fa-note-sticky"></i>
+            <span>+ Nieuwe Post-It Plakken</span>
+          </button>
+          <button onclick="clearAllNotes()" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-300 text-xs font-medium border border-slate-800 hover:border-red-800/40 transition-all" title="Bord opschonen">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pillars Grid Container (Dynamisch gevuld via JavaScript) -->
+      <div id="pillars-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+        <!-- Wordt live gegenereerd door renderPillars() -->
+      </div>
+    </div>
+
+    <!-- VIEW 2: DEELNEMERS BEHEER -->
+    <div id="view-participants" class="hidden flex-1 flex flex-col space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80">
+        <div>
+          <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+            <span>👥 Deelnemers & Rollen Beheer</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">
+            Beheer wie er meedoet aan de sessie, wijs focuspilaren toe of wissel van actieve gebruiker.
+          </p>
+        </div>
+
+        <button onclick="openAddParticipantModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all">
+          <i class="fa-solid fa-user-plus"></i>
+          <span>+ Deelnemer Toevoegen</span>
+        </button>
+      </div>
+
+      <!-- Deelnemers Grid -->
+      <div id="participants-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Wordt live gerenderd -->
+      </div>
+    </div>
+
+    <!-- VIEW 3: OVERZICHT & XP LEADERBOARD -->
+    <div id="view-overview" class="hidden flex-1 flex flex-col space-y-8">
+      
+      <!-- Leaderboard Header Card -->
+      <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-6 rounded-3xl border border-indigo-500/20 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+          <span class="text-xs font-bold tracking-wider uppercase text-amber-400 flex items-center gap-1.5 mb-1">
+            <i class="fa-solid fa-fire"></i> Gamification & Engagement
+          </span>
+          <h2 class="text-2xl font-black text-white">Workshop XP & Pilaar Toewijzing</h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-xl">
+            Transparant inzicht in ieders inbreng: post-its geplaatst (+10 XP), stemmen uitgebracht (+5 XP) en voltooide team quests (+50 XP).
+          </p>
+        </div>
+
+        <!-- Quick Summary Counters -->
+        <div class="grid grid-cols-3 gap-3 w-full md:w-auto">
+          <div class="bg-slate-950/60 border border-slate-800 px-4 py-2.5 rounded-2xl text-center">
+            <div id="stat-total-notes" class="text-lg font-black text-indigo-400">0</div>
+            <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Post-its</div>
+          </div>
+          <div class="bg-slate-950/60 border border-slate-800 px-4 py-2.5 rounded-2xl text-center">
+            <div id="stat-total-votes" class="text-lg font-black text-emerald-400">0</div>
+            <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Stemmen</div>
+          </div>
+          <div class="bg-slate-950/60 border border-slate-800 px-4 py-2.5 rounded-2xl text-center">
+            <div id="stat-total-xp" class="text-lg font-black text-amber-400">0</div>
+            <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Totaal XP</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Quests / Taken Sectie (+50 XP) -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+              <span class="text-amber-400"><i class="fa-solid fa-bullseye"></i></span>
+              <span>Team Quests & Follow-up Taken</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Claim een opdracht om direct <span class="text-amber-400 font-bold">+50 XP</span> te verdienen voor jouw profiel.
+            </p>
+          </div>
+          <span class="text-[11px] font-semibold bg-amber-500/10 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/30">
+            50 XP per taak
+          </span>
+        </div>
+
+        <div id="quests-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Live gerenderd via renderOverview() -->
+        </div>
+      </div>
+
+      <!-- Pilaar Toewijzing Matrix & XP Leaderboard Table -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Pilaar Toewijzing Matrix -->
+        <div class="lg:col-span-1 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 flex flex-col">
+          <h3 class="text-base font-extrabold text-white mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-diagram-project text-indigo-400"></i>
+            <span>Pilaar Toewijzing Matrix</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Wie pakt primair eigenaarschap per domein?</p>
+          
+          <div id="matrix-pillars-container" class="space-y-3 flex-1">
+            <!-- Live gerenderd -->
+          </div>
+        </div>
+
+        <!-- Leaderboard Ranglijst -->
+        <div class="lg:col-span-2 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6">
+          <h3 class="text-base font-extrabold text-white mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-ranking-star text-amber-400"></i>
+            <span>Workshop XP Ranglijst</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Realtime score op basis van alle interacties.</p>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-950/70 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+                <tr>
+                  <th class="py-3 px-3">Rang</th>
+                  <th class="py-3 px-3">Deelnemer</th>
+                  <th class="py-3 px-3">Focus Pilaar</th>
+                  <th class="py-3 px-2 text-center">Post-its (+10)</th>
+                  <th class="py-3 px-2 text-center">Stemmen (+5)</th>
+                  <th class="py-3 px-2 text-center">Taken (+50)</th>
+                  <th class="py-3 px-3 text-right">Totaal XP</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-table-body" class="divide-y divide-slate-800/60 font-medium">
+                <!-- Live gerenderd -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL 1: NIEUWE POST-IT PLAKKEN -->
+  <div id="modal-note" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl p-6 relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-pen-nib text-indigo-400"></i>
+          <span>Nieuwe Post-It Plakken (+10 XP)</span>
+        </h3>
+        <button onclick="closeNoteModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Kies Pilaar</label>
+          <select id="modal-note-pillar" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+            <!-- Wordt dynamisch gevuld met alle pilaren -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Kies Vraag / Categorie</label>
+          <select id="modal-note-category" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+            <option value="meaning">1. Betekenis (Wat betekent dit voor ons?)</option>
+            <option value="wel">2. Wat doen we WÉL? (Onderwerpen & waarde)</option>
+            <option value="niet">3. Wat doen we NIET? (Grenzen & uitsluitingen)</option>
+            <option value="dilemma">4. Dilemma & Spanning (Lastige keuzes & offers)</option>
+            <option value="moonshot">5. 🚀 Toekomstvisie & Moonshot</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Inhoud Post-it</label>
+          <textarea id="modal-note-content" rows="4" placeholder="Typ hier jouw observatie, idee of afbakening..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-slate-500"></textarea>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <span>Auteur:</span>
+            <span id="modal-note-author-preview" class="font-bold text-indigo-300">Actieve Deelnemer</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="closeNoteModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Annuleren</button>
+            <button onclick="saveNote()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30">Plak Post-It (+10 XP)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: NIEUWE PILAAR TOEVOEGEN -->
+  <div id="modal-pillar" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-layer-group text-indigo-400"></i>
+          <span>Nieuwe Pilaar Definiëren</span>
+        </h3>
+        <button onclick="closeAddPillarModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Naam van de Pilaar</label>
+          <input type="text" id="modal-pillar-name" placeholder="bijv. Culture & Change, Autonomous Operations..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Korte Ondertitel / Tagline</label>
+          <input type="text" id="modal-pillar-tagline" placeholder="bijv. Gedragsverandering, cultuur & adaptief vermogen" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Kleurenthema</label>
+          <select id="modal-pillar-color" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+            <option value="violet">Violet / Paars</option>
+            <option value="teal">Teal / Turkoois</option>
+            <option value="cyan">Cyan / Lichtblauw</option>
+            <option value="rose">Rose / Roodtint</option>
+            <option value="amber">Amber / Goudgeel</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Uitdagende Toekomst- / Visievraag</label>
+          <textarea id="modal-pillar-vision" rows="2" placeholder="Welke radicale moonshot of spanning typeert deze pilaar richting 2030?" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeAddPillarModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Annuleren</button>
+          <button onclick="saveNewPillar()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg">Toevoegen aan Bord</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: DEELNEMER TOEVOEGEN / BEWERKEN -->
+  <div id="modal-participant" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-user-gear text-indigo-400"></i>
+          <span>Deelnemer Toevoegen</span>
+        </h3>
+        <button onclick="closeParticipantModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Volledige Naam</label>
+          <input type="text" id="modal-participant-name" placeholder="bijv. Sarah de Vries" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Functie / Rol in het team</label>
+          <input type="text" id="modal-participant-role" placeholder="bijv. Senior Consultant Future of Work" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Primaire Focus Pilaar</label>
+          <select id="modal-participant-pillar" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+            <!-- Dynamisch -->
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeParticipantModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Annuleren</button>
+          <button onclick="saveParticipant()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg">Deelnemer Opslaan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: CLOUD SYNC INFORMATIE -->
+  <div id="modal-cloud" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl p-6 relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-cloud text-emerald-400"></i>
+          <span>Multiplayer Cloud Synchronisatie</span>
+        </h3>
+        <button onclick="closeCloudModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4 text-xs text-slate-300 leading-relaxed">
+        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 flex items-center gap-3">
+          <div id="cloud-indicator-circle" class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+          <div>
+            <div id="cloud-indicator-title" class="font-bold text-slate-200">Firebase Geïntegreerd</div>
+            <div id="cloud-indicator-desc" class="text-[11px] text-slate-400">Project: brainstormfow</div>
+          </div>
+        </div>
+
+        <p>
+          Wanneer deze pagina draait via <strong>Netlify</strong> of <strong>GitHub Pages</strong>, verbinden alle geopende laptops met dezelfde realtime database. 
+        </p>
+
+        <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-[11px]">
+          <strong class="font-bold block mb-1">💡 Tip voor Firebase Console:</strong>
+          Als stemmen of post-its niet tussen verschillende apparaten updaten, zorg dan in je Firebase Console (project <span class="font-mono">brainstormfow</span>) dat:
+          <ul class="list-disc pl-4 mt-1 space-y-1">
+            <li><strong>Authentication &gt; Sign-in method &gt; Anoniem</strong> op "Ingeschakeld" staat.</li>
+            <li><strong>Firestore Database</strong> is aangemaakt in Testmodus.</li>
+          </ul>
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <button onclick="closeCloudModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-700">Sluiten</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Box (Geen alerts!) -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 pointer-events-none transition-all duration-300 transform translate-y-8 opacity-0">
+    <div id="toast-content" class="px-4 py-3 bg-slate-900 border border-indigo-500/40 text-white text-xs font-semibold rounded-2xl shadow-2xl flex items-center gap-3">
+      <i id="toast-icon" class="fa-solid fa-check text-indigo-400"></i>
+      <span id="toast-message">Melding</span>
+    </div>
+  </div>
+
+  <!-- FIREBASE & APPLICATION LOGIC -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Firebase configuratie
+    const firebaseConfig = {
+      apiKey: "AIzaSyCSMhYvF2zoAsVqbFS2IjHPvjH2_5YN6Yo",
+      authDomain: "brainstormfow.firebaseapp.com",
+      projectId: "brainstormfow",
+      storageBucket: "brainstormfow.firebasestorage.app",
+      messagingSenderId: "177825593709",
+      appId: "1:177825593709:web:d83452b9c815bd76848264"
+    };
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'fow-workshop-app';
+    let db = null;
+    let auth = null;
+    let isCloudSyncActive = false;
+
+    // Default Sessie State
+    const defaultState = {
+      activeUser: 'user-1',
+      userVotes: {}, // { [userId]: { [noteId]: true } }
+      pillars: [
+        {
+          id: 'pillar-ai',
+          name: 'AI in Work',
+          tagline: 'Autonome workflows, mens-AI interactie & taakverschuiving',
+          color: 'indigo',
+          badgeBg: 'bg-indigo-500/10',
+          badgeText: 'text-indigo-400',
+          borderCol: 'border-indigo-500/30',
+          accentBg: 'bg-indigo-600',
+          visionQuestion: "Wat is onze 'moonshot' als AI autonoom het leeuwendeel van kenniswerk overneemt?",
+          isCustom: false
+        },
+        {
+          id: 'pillar-xla',
+          name: 'XLA / XMO',
+          tagline: 'Experience Level Agreements & Experience Offices',
+          color: 'emerald',
+          badgeBg: 'bg-emerald-500/10',
+          badgeText: 'text-emerald-400',
+          borderCol: 'border-emerald-500/30',
+          accentBg: 'bg-emerald-600',
+          visionQuestion: "Hoe sturen we op menselijke waarde als traditionele SLA's volstrekt achterhaald zijn?",
+          isCustom: false
+        },
+        {
+          id: 'pillar-sovereignty',
+          name: 'Sovereignty',
+          tagline: 'Digitale, data- en operationele soevereiniteit & autonomie',
+          color: 'amber',
+          badgeBg: 'bg-amber-500/10',
+          badgeText: 'text-amber-400',
+          borderCol: 'border-amber-500/30',
+          accentBg: 'bg-amber-600',
+          visionQuestion: "Hoe borgen we autonomie en IP als organisaties 100% leunen op Big Tech monopolies?",
+          isCustom: false
+        },
+        {
+          id: 'pillar-playification',
+          name: 'Playification',
+          tagline: 'Serious gaming, behavioral psychology & motivatie-architectuur',
+          color: 'fuchsia',
+          badgeBg: 'bg-fuchsia-500/10',
+          badgeText: 'text-fuchsia-400',
+          borderCol: 'border-fuchsia-500/30',
+          accentBg: 'bg-fuchsia-600',
+          visionQuestion: "Hoe transformeren we werk zodat transformatie voelt als een game die mensen intrinsiek wíllen spelen?",
+          isCustom: false
+        }
+      ],
+      participants: [
+        { id: 'user-1', name: 'Executive Lead', role: 'Partner / Lead FoW', pillarId: 'pillar-ai', xp: 50 },
+        { id: 'user-2', name: 'Strategic Consultant', role: 'Senior Strategy Consultant', pillarId: 'pillar-xla', xp: 20 },
+        { id: 'user-3', name: 'Change Specialist', role: 'Transformation & People Lead', pillarId: 'pillar-playification', xp: 10 }
+      ],
+      notes: [
+        {
+          id: 'note-sample-1',
+          pillarId: 'pillar-ai',
+          category: 'meaning',
+          content: 'Niet tooling centraal stellen, maar het herontwerp van taakverdeling tussen mens en AI agent.',
+          authorId: 'user-1',
+          authorName: 'Executive Lead',
+          votes: 3,
+          createdAt: Date.now() - 3600000
+        },
+        {
+          id: 'note-sample-2',
+          pillarId: 'pillar-xla',
+          category: 'wel',
+          content: 'Productiviteitsverlies en wrijving kwantificeren met sentiment-analyse en sentiment dashboards.',
+          authorId: 'user-2',
+          authorName: 'Strategic Consultant',
+          votes: 2,
+          createdAt: Date.now() - 1800000
+        }
+      ],
+      quests: [
+        { id: 'quest-1', title: 'Opmaak bestaande documenten herzien en opschonen', desc: 'Huisstijl harmoniseren, templates moderniseren en overtollige ballast verwijderen.', assignedTo: null, xpReward: 50 },
+        { id: 'quest-2', title: 'Onderwerp bedenken voor een eerste kennissessie', desc: 'Interactieve meetup pitch voorbereiden rondom een urgente klantuitdaging.', assignedTo: null, xpReward: 50 },
+        { id: 'quest-3', title: 'Verder uitwerken aan algehele visie document FoW', desc: 'Kernproposities en positionering vastleggen in de overkoepelende 1-pager.', assignedTo: null, xpReward: 50 },
+        { id: 'quest-4', title: 'Teamuitje organiseren', desc: 'Locatie, playful interactie en informele teamconnectie vormgeven.', assignedTo: null, xpReward: 50 }
+      ]
+    };
+
+    // Actieve State
+    let state = JSON.parse(JSON.stringify(defaultState));
+
+    function showToast(message, icon = 'fa-check') {
+      const toastEl = document.getElementById('toast');
+      const msgEl = document.getElementById('toast-message');
+      const iconEl = document.getElementById('toast-icon');
+      if (!toastEl || !msgEl) return;
+
+      msgEl.innerText = message;
+      if (iconEl) iconEl.className = `fa-solid ${icon} text-indigo-400`;
+
+      toastEl.classList.remove('translate-y-8', 'opacity-0');
+      toastEl.classList.add('translate-y-0', 'opacity-100');
+
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toastEl.classList.remove('translate-y-0', 'opacity-100');
+        toastEl.classList.add('translate-y-8', 'opacity-0');
+      }, 3000);
+    }
 
     function updateSyncIndicator() {
-      let syncBadge = document.getElementById('live-sync-indicator');
-      if (!syncBadge) {
-        const headerRight = document.querySelector('header .flex.items-center.gap-3');
-        if (headerRight) {
-          syncBadge = document.createElement('button');
-          syncBadge.id = 'live-sync-indicator';
-          syncBadge.onclick = () => openSyncConfigModal();
-          headerRight.prepend(syncBadge);
-        }
-      }
+      const badge = document.getElementById('sync-badge');
+      const text = document.getElementById('sync-status-text');
+      const circle = document.getElementById('cloud-indicator-circle');
+      const title = document.getElementById('cloud-indicator-title');
+      const desc = document.getElementById('cloud-indicator-desc');
 
-      if (syncBadge) {
-        if (state.isLive) {
-          syncBadge.className = 'px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 shadow-sm transition hover:bg-emerald-900/60 cursor-pointer';
-          syncBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>Live Synchroon (${state.participants.length} deelnemers)</span>`;
-          syncBadge.title = 'Realtime verbonden! Iedereen ziet direct elkaars post-its en stemmen.';
-        } else {
-          syncBadge.className = 'px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/50 transition cursor-pointer';
-          syncBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span>Lokaal (Klik voor Live Sync)</span>`;
-          syncBadge.title = 'Klik om realtime cloud synchronisatie te koppelen voor je team.';
-        }
-      }
-    }
+      if (!badge || !text) return;
 
-    async function initRealtimeCloud() {
-      let config = null;
-
-      try {
-        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-          config = JSON.parse(__firebase_config);
-        } else if (window.CUSTOM_FIREBASE_CONFIG) {
-          config = window.CUSTOM_FIREBASE_CONFIG;
-        }
-      } catch (e) {
-        console.warn("Geen standaard configuratie gevonden:", e);
-      }
-
-      if (!config) {
-        updateSyncIndicator();
-        return;
-      }
-
-      try {
-        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-        const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-        const { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-
-        const app = initializeApp(config);
-        authInstance = getAuth(app);
-        dbInstance = getFirestore(app);
-
-        // Custom token priority with fallback to anonymous auth
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(authInstance, __initial_auth_token);
-        } else {
-          await signInAnonymously(authInstance);
-        }
-
-        const user = authInstance.currentUser;
-        if (!user) {
-          console.warn("Geen geauthenticeerde gebruiker verkregen.");
-          return;
-        }
-        currentUserUid = user.uid;
-        state.isLive = true;
-        updateSyncIndicator();
-        showToast("Verbonden met Live Sessie! 🚀");
-
-        setupRealtimeSubscriptions(dbInstance, { collection, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot });
-      } catch (err) {
-        console.error("Fout bij starten realtime sessie:", err);
-        state.isLive = false;
-        updateSyncIndicator();
+      if (isCloudSyncActive) {
+        badge.className = "px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer";
+        text.innerText = "Live Synchroon";
+        if (circle) circle.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse";
+        if (title) title.innerText = "Firebase Realtime Verbonden";
+        if (desc) desc.innerText = "Project: brainstormfow (Wijzigingen zijn direct overal zichtbaar)";
+      } else {
+        badge.className = "px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer";
+        text.innerText = "Lokaal Actief (Preview)";
+        if (circle) circle.className = "w-3 h-3 rounded-full bg-amber-500";
+        if (title) title.innerText = "In-Memory Modus";
+        if (desc) desc.innerText = "Lokaal actief. Realtime sync schakelt in zodra Firebase auth actief is.";
       }
     }
 
-    function setupRealtimeSubscriptions(db, fns) {
-      firestoreUnsubs.forEach(unsub => unsub && unsub());
-      firestoreUnsubs = [];
+    async function initFirebaseCloud() {
+      try {
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
 
-      // 1. Pillars Collection
-      const pillarsCol = fns.collection(db, 'artifacts', appId, 'public', 'data', 'pillars');
-      const unsubPillars = fns.onSnapshot(pillarsCol, (snapshot) => {
-        if (snapshot.empty) {
-          // Initial seed if first time run
-          PILLARS_CONFIG.forEach(p => {
-            fns.setDoc(fns.doc(db, 'artifacts', appId, 'public', 'data', 'pillars', p.id), p);
-          });
-        } else {
-          state.pillars = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          renderPillars();
-          if (state.activeTab === 'overzicht') renderOverview();
-        }
-      }, (error) => {
-        console.error("Fout bij synchroniseren pilaren:", error);
-      });
-      firestoreUnsubs.push(unsubPillars);
+        // Anonieme inlog
+        await signInAnonymously(auth);
 
-      // 2. Participants Collection
-      const partsCol = fns.collection(db, 'artifacts', appId, 'public', 'data', 'participants');
-      const unsubParticipants = fns.onSnapshot(partsCol, (snapshot) => {
-        if (!snapshot.empty) {
-          state.participants = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          if (!state.activeUser && state.participants.length > 0) {
-            state.activeUser = state.participants[0].id;
+        // Document pad volgens RULE 1: /artifacts/{appId}/public/data/{collectionName}/{docId}
+        const boardDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'fow_board', 'state');
+
+        // Luister naar live wijzigingen
+        onSnapshot(boardDocRef, (snap) => {
+          if (snap.exists()) {
+            const remoteData = snap.data();
+            if (remoteData && remoteData.pillars) {
+              const currentActiveUser = state.activeUser;
+              state = remoteData;
+              // Behoud lokaal gekozen gebruiker
+              if (currentActiveUser) state.activeUser = currentActiveUser;
+              refreshAllViews();
+            }
+          } else {
+            // Document bestaat nog niet in Firestore, initialiseer met defaultState
+            pushStateToCloud();
           }
-          updateActiveUserHeader();
-          if (state.activeTab === 'deelnemers') renderParticipants();
-          if (state.activeTab === 'overzicht') renderOverview();
-        }
-      }, (error) => {
-        console.error("Fout bij synchroniseren deelnemers:", error);
-      });
-      firestoreUnsubs.push(unsubParticipants);
+          isCloudSyncActive = true;
+          updateSyncIndicator();
+        }, (err) => {
+          console.warn("Firestore listener melding:", err);
+          isCloudSyncActive = false;
+          updateSyncIndicator();
+        });
 
-      // 3. Notes Collection
-      const notesCol = fns.collection(db, 'artifacts', appId, 'public', 'data', 'notes');
-      const unsubNotes = fns.onSnapshot(notesCol, (snapshot) => {
-        state.notes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (state.activeTab === 'brainstorm') renderPillars();
-        if (state.activeTab === 'overzicht') renderOverview();
-      }, (error) => {
-        console.error("Fout bij synchroniseren post-its:", error);
-      });
-      firestoreUnsubs.push(unsubNotes);
-
-      // 4. Tasks Collection
-      const tasksCol = fns.collection(db, 'artifacts', appId, 'public', 'data', 'tasks');
-      const unsubTasks = fns.onSnapshot(tasksCol, (snapshot) => {
-        if (snapshot.empty) {
-          DEFAULT_TASKS.forEach(t => {
-            fns.setDoc(fns.doc(db, 'artifacts', appId, 'public', 'data', 'tasks', t.id), t);
-          });
-        } else {
-          state.tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          if (state.activeTab === 'overzicht') renderTasks();
-        }
-      }, (error) => {
-        console.error("Fout bij synchroniseren taken:", error);
-      });
-      firestoreUnsubs.push(unsubTasks);
+      } catch (err) {
+        console.warn("Firebase startup melding:", err);
+        isCloudSyncActive = false;
+        updateSyncIndicator();
+      }
     }
 
-    function setActiveUser(participantId) {
-      state.activeUser = participantId;
-      updateActiveUserHeader();
-      refreshAll();
-      const user = state.participants.find(p => p.id === participantId);
-      if (user) {
-        showToast(`Ingelogd als: ${user.name}`);
+    async function pushStateToCloud() {
+      if (!isCloudSyncActive || !db) return;
+      try {
+        const boardDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'fow_board', 'state');
+        await setDoc(boardDocRef, state);
+      } catch (e) {
+        console.warn("Fout bij synchroniseren naar cloud:", e);
       }
+    }
+
+    function calculateUserXP(userId) {
+      let totalXP = 0;
+      // 1. Post-its (+10 XP)
+      const userNotes = state.notes.filter(n => n.authorId === userId);
+      totalXP += (userNotes.length * 10);
+
+      // 2. Votes uitgebracht (+5 XP)
+      if (state.userVotes && state.userVotes[userId]) {
+        const votesGiven = Object.keys(state.userVotes[userId]).length;
+        totalXP += (votesGiven * 5);
+      }
+
+      // 3. Quests geclaimd (+50 XP)
+      const userQuests = state.quests.filter(q => q.assignedTo === userId);
+      totalXP += (userQuests.length * 50);
+
+      return totalXP;
+    }
+
+    function updateActiveUserHeader() {
+      const activeUser = state.participants.find(p => p.id === state.activeUser) || state.participants[0];
+      const nameEl = document.getElementById('header-user-name');
+      const xpEl = document.getElementById('header-user-xp');
+      
+      if (activeUser) {
+        const xp = calculateUserXP(activeUser.id);
+        if (nameEl) nameEl.innerText = activeUser.name;
+        if (xpEl) xpEl.innerText = `${xp} XP`;
+      }
+    }
+
+    function renderPillars() {
+      const container = document.getElementById('pillars-container');
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      state.pillars.forEach(pillar => {
+        const colDiv = document.createElement('div');
+        colDiv.className = `flex flex-col bg-slate-900/80 rounded-2xl border ${pillar.borderCol || 'border-slate-800'} overflow-hidden shadow-lg`;
+
+        // Pillar Header
+        const headerDiv = document.createElement('div');
+        headerDiv.className = `p-4 border-b border-slate-800/80 bg-slate-950/40 relative`;
+        
+        let deleteBtnHtml = pillar.isCustom ? `
+          <button onclick="deletePillar('${pillar.id}')" class="text-slate-500 hover:text-red-400 p-1 text-xs" title="Pilaar verwijderen">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        ` : '';
+
+        headerDiv.innerHTML = `
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${pillar.badgeBg || 'bg-indigo-500/10'} ${pillar.badgeText || 'text-indigo-400'} border border-current/20">
+              Pilaar
+            </span>
+            ${deleteBtnHtml}
+          </div>
+          <h3 class="text-base font-black text-white">${pillar.name}</h3>
+          <p class="text-[11px] text-slate-400 mt-0.5 leading-snug">${pillar.tagline || ''}</p>
+
+          <!-- Vision & Moonshot Question Banner -->
+          <div class="mt-3 p-2.5 rounded-xl bg-gradient-to-r from-purple-950/40 to-slate-900 border border-purple-500/30 text-[11px] text-purple-200">
+            <div class="font-bold flex items-center gap-1.5 text-purple-300 mb-0.5">
+              <i class="fa-solid fa-rocket text-[10px]"></i>
+              <span>5. Toekomst & Moonshot</span>
+            </div>
+            <p class="italic text-slate-300">"${pillar.visionQuestion || 'Wat is onze radicale visie voor deze pilaar?'}"</p>
+          </div>
+        `;
+        colDiv.appendChild(headerDiv);
+
+        // Sticky Notes Container
+        const notesContainer = document.createElement('div');
+        notesContainer.className = 'p-3 flex-1 flex flex-col space-y-3 min-h-[300px] max-h-[650px] overflow-y-auto';
+
+        // Filter notes for this pillar
+        const pillarNotes = state.notes.filter(n => n.pillarId === pillar.id);
+
+        if (pillarNotes.length === 0) {
+          notesContainer.innerHTML = `
+            <div class="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-600 border border-dashed border-slate-800/80 rounded-xl">
+              <i class="fa-regular fa-note-sticky text-2xl mb-2"></i>
+              <p class="text-xs">Nog geen post-its geplakt.</p>
+              <button onclick="openAddNoteModal('${pillar.id}')" class="mt-2 text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline">
+                + Eerste post-it plakken
+              </button>
+            </div>
+          `;
+        } else {
+          pillarNotes.forEach(note => {
+            const noteCard = document.createElement('div');
+            
+            // Category badges & colors
+            let categoryBadge = '';
+            let cardAccent = 'border-slate-800';
+            if (note.category === 'meaning') {
+              categoryBadge = '<span class="bg-blue-500/20 text-blue-300 border border-blue-500/30">1. Betekenis</span>';
+            } else if (note.category === 'wel') {
+              categoryBadge = '<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">2. Wel doen</span>';
+            } else if (note.category === 'niet') {
+              categoryBadge = '<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30">3. Niet doen</span>';
+            } else if (note.category === 'dilemma') {
+              categoryBadge = '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30">4. Dilemma</span>';
+            } else if (note.category === 'moonshot') {
+              categoryBadge = '<span class="bg-purple-500/20 text-purple-300 border border-purple-500/30">5. 🚀 Moonshot</span>';
+              cardAccent = 'border-purple-500/40';
+            }
+
+            // Check if active user has voted on this note
+            const hasVoted = state.userVotes[state.activeUser] && state.userVotes[state.activeUser][note.id];
+            const voteBtnClass = hasVoted 
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
+              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700';
+
+            noteCard.className = `sticky-card p-3 rounded-xl bg-slate-950/90 border ${cardAccent} shadow flex flex-col justify-between space-y-2.5`;
+            noteCard.innerHTML = `
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-1.5">
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full ${categoryBadge.replace('<span class="', '').replace('</span>', '')}">
+                    ${categoryBadge}
+                  </span>
+                  <button onclick="deleteNote('${note.id}')" class="text-slate-600 hover:text-red-400 p-0.5 text-xs transition-colors" title="Verwijderen">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+                <p class="text-xs text-slate-200 leading-snug whitespace-pre-wrap">${note.content}</p>
+              </div>
+
+              <div class="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px]">
+                <span class="text-slate-400 font-medium truncate max-w-[120px]">
+                  <i class="fa-solid fa-user-circle text-[9px] mr-1 text-slate-500"></i>${note.authorName || 'Anoniem'}
+                </span>
+                
+                <button onclick="castVote('${note.id}')" class="px-2 py-1 rounded-lg ${voteBtnClass} flex items-center gap-1 font-bold transition-transform active:scale-95" title="Stem op deze post-it (+5 XP voor jou)">
+                  <i class="fa-solid fa-thumbs-up text-[9px]"></i>
+                  <span>${note.votes || 0}</span>
+                </button>
+              </div>
+            `;
+            notesContainer.appendChild(noteCard);
+          });
+        }
+
+        colDiv.appendChild(notesContainer);
+
+        // Column Footer Button
+        const footerDiv = document.createElement('div');
+        footerDiv.className = 'p-3 bg-slate-950/60 border-t border-slate-800';
+        footerDiv.innerHTML = `
+          <button onclick="openAddNoteModal('${pillar.id}')" class="w-full py-1.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-700/60">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>Post-It Plakken</span>
+          </button>
+        `;
+        colDiv.appendChild(footerDiv);
+
+        container.appendChild(colDiv);
+      });
     }
 
     function renderParticipants() {
-      const container = document.getElementById('participant-list-container');
-      const countEl = document.getElementById('count-participants');
+      const container = document.getElementById('participants-cards-container');
       if (!container) return;
 
-      if (countEl) {
-        countEl.innerText = state.participants.length;
-      }
       container.innerHTML = '';
 
-      if (state.participants.length === 0) {
-        container.innerHTML = `
-          <div class="text-center p-8 text-slate-400">
-            Nog geen deelnemers. Voeg de eerste deelnemer toe via de knop hierboven!
-          </div>
-        `;
-        return;
-      }
+      state.participants.forEach(participant => {
+        const pillar = state.pillars.find(p => p.id === participant.pillarId);
+        const userXP = calculateUserXP(participant.id);
+        const isActive = participant.id === state.activeUser;
 
-      state.participants.forEach(p => {
-        const isActive = p.id === state.activeUser;
         const card = document.createElement('div');
-        const userNotes = state.notes.filter(n => n.authorId === p.id).length;
-        const userVotes = p.votedNoteIds ? p.votedNoteIds.length : 0;
-
-        const assignedPillarObj = state.pillars.find(pil => pil.id === p.assignedPillar);
-        const pillarDisplayName = assignedPillarObj ? assignedPillarObj.title : (p.assignedPillar || 'Allround');
-
-        card.className = `p-4 rounded-xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${isActive ? 'bg-indigo-950/40 border-indigo-500/60 shadow-lg' : 'bg-slate-900/60 border-slate-800'}`;
+        card.className = `p-5 rounded-2xl bg-slate-900/80 border ${isActive ? 'border-indigo-500 shadow-indigo-500/10' : 'border-slate-800'} shadow-lg flex flex-col justify-between space-y-4`;
 
         card.innerHTML = `
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-white text-sm">
-              ${escapeHtml(p.name.substring(0, 2).toUpperCase())}
+          <div class="flex items-start justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-base shadow">
+                ${participant.name.charAt(0)}
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span>${participant.name}</span>
+                  ${isActive ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Jij bent dit</span>' : ''}
+                </h4>
+                <p class="text-xs text-slate-400">${participant.role || 'Consultant'}</p>
+              </div>
             </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-white">${escapeHtml(p.name)}</span>
-                ${isActive ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">Actief</span>' : ''}
-              </div>
-              <div class="text-xs text-slate-400 mt-0.5">
-                <span>${escapeHtml(p.role || 'Consultant')}</span>
-                <span class="mx-1">•</span>
-                <span class="text-indigo-400 font-medium">Pilaar: ${escapeHtml(pillarDisplayName)}</span>
-              </div>
+
+            <button onclick="deleteParticipant('${participant.id}')" class="text-slate-500 hover:text-red-400 p-1.5 text-xs transition-colors" title="Deelnemer verwijderen">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800">
+              <span>Focus Pilaar:</span>
+              <span class="font-bold text-slate-200">${pillar ? pillar.name : 'Niet toegewezen'}</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800">
+              <span>Totaal XP Behaald:</span>
+              <span class="font-black text-amber-400 flex items-center gap-1">
+                <i class="fa-solid fa-bolt text-[10px]"></i>
+                ${userXP} XP
+              </span>
             </div>
           </div>
 
-          <div class="flex items-center gap-3 self-end sm:self-center">
-            <div class="text-right mr-2">
-              <span class="text-xs font-black text-amber-400 block">${p.xp || 0} XP</span>
-              <span class="text-[10px] text-slate-400">${userNotes} notes • ${userVotes} votes</span>
-            </div>
-
-            ${!isActive ? `
-              <button onclick="setActiveUser('${p.id}')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700">
-                Activeer
-              </button>
-            ` : ''}
-
-            <button onclick="deleteParticipant('${p.id}')" class="p-2 rounded-lg bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700 transition" title="Verwijder deelnemer">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <button onclick="setActiveUser('${participant.id}')" class="w-full py-2 rounded-xl text-xs font-bold transition-all ${isActive ? 'bg-indigo-600/30 text-indigo-300 cursor-default' : 'bg-slate-800 hover:bg-slate-700 text-white'}">
+              ${isActive ? '✓ Huidig Actief Profiel' : 'Selecteer als Jouw Profiel'}
             </button>
           </div>
         `;
@@ -252,432 +938,440 @@
     }
 
     function renderOverview() {
-      const totalParticipants = state.participants.length;
+      // 1. Stat Summary counters
       const totalNotes = state.notes.length;
-      const totalVotes = state.notes.reduce((acc, curr) => acc + (curr.votes || 0), 0);
-      const totalXp = state.participants.reduce((acc, curr) => acc + (curr.xp || 0), 0);
+      let totalVotes = 0;
+      state.notes.forEach(n => { totalVotes += (n.votes || 0); });
 
-      const elPart = document.getElementById('stat-participants-count');
-      if (elPart) elPart.innerText = totalParticipants;
-      const elNotes = document.getElementById('stat-notes-count');
-      if (elNotes) elNotes.innerText = totalNotes;
-      const elVotes = document.getElementById('stat-votes-count');
-      if (elVotes) elVotes.innerText = totalVotes;
-      const elXp = document.getElementById('stat-session-xp');
-      if (elXp) elXp.innerText = totalXp;
+      let totalXPAll = 0;
+      state.participants.forEach(p => { totalXPAll += calculateUserXP(p.id); });
 
-      const matrixContainer = document.getElementById('matrix-pillars-container');
-      if (matrixContainer) {
-        matrixContainer.innerHTML = '';
+      const statNotesEl = document.getElementById('stat-total-notes');
+      const statVotesEl = document.getElementById('stat-total-votes');
+      const statXpEl = document.getElementById('stat-total-xp');
+      if (statNotesEl) statNotesEl.innerText = totalNotes;
+      if (statVotesEl) statVotesEl.innerText = totalVotes;
+      if (statXpEl) statXpEl.innerText = totalXPAll;
 
-        state.pillars.forEach((pil, index) => {
-          const theme = PILLAR_THEMES[pil.color] || PILLAR_THEMES.indigo;
-          const assignedMembers = state.participants.filter(p => p.assignedPillar === pil.id);
-          const col = document.createElement('div');
-          col.className = `p-4 rounded-xl border ${theme.matrixBg} space-y-2.5`;
-          col.innerHTML = `
-            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h4 class="text-xs font-bold text-white truncate pr-1">Pilaar ${index + 1}: ${escapeHtml(pil.title)}</h4>
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold whitespace-nowrap">${assignedMembers.length} leden</span>
+      // 2. Render Team Quests (+50 XP)
+      const questsContainer = document.getElementById('quests-container');
+      if (questsContainer) {
+        questsContainer.innerHTML = '';
+        state.quests.forEach(quest => {
+          const assignedUser = state.participants.find(p => p.id === quest.assignedTo);
+          const isAssigned = !!assignedUser;
+          const isAssignedToActive = quest.assignedTo === state.activeUser;
+
+          const questCard = document.createElement('div');
+          questCard.className = `p-4 rounded-2xl bg-slate-950 border ${isAssigned ? 'border-amber-500/40 bg-amber-500/5' : 'border-slate-800'} flex flex-col justify-between space-y-3`;
+
+          let optionsHtml = `<option value="">-- Kies Deelnemer --</option>`;
+          state.participants.forEach(p => {
+            optionsHtml += `<option value="${p.id}" ${quest.assignedTo === p.id ? 'selected' : ''}>${p.name}</option>`;
+          });
+
+          questCard.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <h4 class="text-xs font-bold text-white">${quest.title}</h4>
+                <span class="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  +50 XP
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-400">${quest.desc}</p>
             </div>
-            <div class="space-y-1.5 min-h-[90px]">
-              ${assignedMembers.length > 0 ? assignedMembers.map(m => `
-                <div class="flex items-center justify-between text-xs p-1.5 rounded-lg bg-slate-900/60 border border-slate-800/80">
-                  <span class="font-medium text-slate-200">👤 ${escapeHtml(m.name)}</span>
-                  <span class="text-amber-400 text-[10px] font-bold">${m.xp || 0} XP</span>
-                </div>
-              `).join('') : '<div class="text-[11px] text-slate-500 italic">Nog niemand toegewezen</div>'}
+
+            <div class="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] text-slate-400">Toegewezen aan:</span>
+                <select onchange="assignQuest('${quest.id}', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-200">
+                  ${optionsHtml}
+                </select>
+              </div>
+
+              ${!isAssigned ? `
+                <button onclick="claimQuest('${quest.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] transition-all">
+                  Claim (+50 XP)
+                </button>
+              ` : `
+                <span class="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                  <i class="fa-solid fa-circle-check"></i> ${assignedUser ? assignedUser.name : 'Geclaimd'}
+                </span>
+              `}
             </div>
           `;
-          matrixContainer.appendChild(col);
+          questsContainer.appendChild(questCard);
         });
       }
 
-      renderTasks();
+      // 3. Render Pilaar Toewijzing Matrix
+      const matrixContainer = document.getElementById('matrix-pillars-container');
+      if (matrixContainer) {
+        matrixContainer.innerHTML = '';
+        state.pillars.forEach(pillar => {
+          const assignedMembers = state.participants.filter(p => p.pillarId === pillar.id);
+          const matrixRow = document.createElement('div');
+          matrixRow.className = 'p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between';
 
+          let membersHtml = assignedMembers.length > 0
+            ? assignedMembers.map(m => `<span class="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/30">${m.name}</span>`).join(' ')
+            : '<span class="text-[11px] text-slate-500 italic">Geen toewijzing</span>';
+
+          matrixRow.innerHTML = `
+            <div>
+              <div class="text-xs font-bold text-slate-200">${pillar.name}</div>
+              <div class="text-[10px] text-slate-500">${assignedMembers.length} teamleden</div>
+            </div>
+            <div class="flex items-center gap-1 flex-wrap justify-end">
+              ${membersHtml}
+            </div>
+          `;
+          matrixContainer.appendChild(matrixRow);
+        });
+      }
+
+      // 4. Render Leaderboard Ranglijst
       const tableBody = document.getElementById('leaderboard-table-body');
       if (tableBody) {
         tableBody.innerHTML = '';
+        // Sorteer deelnemers op XP
+        const sorted = [...state.participants].sort((a, b) => calculateUserXP(b.id) - calculateUserXP(a.id));
 
-        const sortedParticipants = [...state.participants].sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        sorted.forEach((participant, index) => {
+          const pillar = state.pillars.find(p => p.id === participant.pillarId);
+          const notesCount = state.notes.filter(n => n.authorId === participant.id).length;
+          const votesGiven = state.userVotes[participant.id] ? Object.keys(state.userVotes[participant.id]).length : 0;
+          const questsClaimed = state.quests.filter(q => q.assignedTo === participant.id).length;
+          const totalXP = calculateUserXP(participant.id);
 
-        if (sortedParticipants.length === 0) {
-          tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-500">Geen data beschikbaar</td></tr>`;
-          return;
-        }
-
-        sortedParticipants.forEach((p, index) => {
-          const userNotesCount = state.notes.filter(n => n.authorId === p.id).length;
-          const userVotesCount = p.votedNoteIds ? p.votedNoteIds.length : 0;
-          const userTasksCount = state.tasks.filter(t => t.assignedToId === p.id).length;
-          const rankMedal = index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : `#${index + 1}`));
-
-          const assignedPillarObj = state.pillars.find(pil => pil.id === p.assignedPillar);
-          const pillarLabel = assignedPillarObj ? assignedPillarObj.title : (p.assignedPillar || 'Allround');
+          let medal = `<span class="text-slate-500 font-bold">#${index + 1}</span>`;
+          if (index === 0) medal = `<span class="text-amber-400 font-black text-sm">🥇 #1</span>`;
+          if (index === 1) medal = `<span class="text-slate-300 font-black text-sm">🥈 #2</span>`;
+          if (index === 2) medal = `<span class="text-amber-600 font-black text-sm">🥉 #3</span>`;
 
           const tr = document.createElement('tr');
-          tr.className = "hover:bg-slate-900/40 transition";
+          tr.className = 'hover:bg-slate-800/40 transition-colors';
           tr.innerHTML = `
-            <td class="py-3 px-4 font-bold text-white flex items-center gap-2">
-              <span>${rankMedal}</span>
-              <span>${escapeHtml(p.name)}</span>
+            <td class="py-3 px-3">${medal}</td>
+            <td class="py-3 px-3 font-bold text-white">
+              ${participant.name}
+              ${participant.id === state.activeUser ? '<span class="ml-1 text-[9px] text-indigo-400 font-normal">(jij)</span>' : ''}
             </td>
-            <td class="py-3 px-4 text-slate-400">${escapeHtml(p.role || 'Consultant')}</td>
-            <td class="py-3 px-4">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-indigo-300 border border-slate-700">
-                ${escapeHtml(pillarLabel)}
-              </span>
-            </td>
-            <td class="py-3 px-4 text-center font-bold text-indigo-400">${userNotesCount}</td>
-            <td class="py-3 px-4 text-center font-bold text-emerald-400">${userVotesCount}</td>
-            <td class="py-3 px-4 text-center font-black text-amber-400">${userTasksCount > 0 ? `+${userTasksCount * 50} (${userTasksCount})` : '0'}</td>
-            <td class="py-3 px-4 text-right font-black text-amber-400 text-sm">${p.xp || 0} XP</td>
+            <td class="py-3 px-3 text-slate-400">${pillar ? pillar.name : '—'}</td>
+            <td class="py-3 px-2 text-center text-indigo-300">${notesCount}</td>
+            <td class="py-3 px-2 text-center text-emerald-300">${votesGiven}</td>
+            <td class="py-3 px-2 text-center text-amber-300">${questsClaimed}</td>
+            <td class="py-3 px-3 text-right font-black text-amber-400 text-sm">${totalXP} XP</td>
           `;
           tableBody.appendChild(tr);
         });
       }
     }
 
-    async function saveNote(e) {
-      e.preventDefault();
-      const text = document.getElementById('note-text').value.trim();
-      const pillarId = document.getElementById('note-pillar-select').value;
-      const category = document.getElementById('note-category-select').value;
-      const authorId = document.getElementById('note-author-select').value;
-
-      if (!text) return;
-
-      const authorObj = state.participants.find(p => p.id === authorId) || { name: 'Anoniem' };
-      const newNote = {
-        pillarId,
-        text,
-        category,
-        authorId,
-        authorName: authorObj.name,
-        votes: 0,
-        voterIds: [],
-        createdAt: Date.now()
-      };
-
-      if (state.isLive && dbInstance) {
-        try {
-          const { collection, addDoc, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-          await addDoc(collection(dbInstance, 'artifacts', appId, 'public', 'data', 'notes'), newNote);
-          
-          if (authorObj.id) {
-            const newXp = (authorObj.xp || 0) + 10;
-            await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', authorObj.id), { xp: newXp });
-          }
-        } catch (err) {
-          console.error("Fout bij opslaan realtime post-it:", err);
-        }
-      } else {
-        newNote.id = 'note-' + Date.now();
-        state.notes.push(newNote);
-        if (authorObj.id) {
-          authorObj.xp = (authorObj.xp || 0) + 10;
-        }
-        refreshAll();
-      }
-
-      showToast(`Post-it geplaatst! +10 XP voor ${authorObj.name}`);
-      closeNoteModal();
-    }
-
-    async function upvoteNote(noteId) {
-      if (!state.activeUser) {
-        showToast("Selecteer eerst een actieve deelnemer rechtsboven!");
-        return;
-      }
-
-      const note = state.notes.find(n => n.id === noteId);
-      const activeUserObj = state.participants.find(p => p.id === state.activeUser);
-      if (!note || !activeUserObj) return;
-
-      note.voterIds = note.voterIds || [];
-      activeUserObj.votedNoteIds = activeUserObj.votedNoteIds || [];
-
-      if (note.voterIds.includes(state.activeUser)) {
-        showToast("Je hebt al op deze stelling gestemd!");
-        return;
-      }
-
-      if (state.isLive && dbInstance) {
-        try {
-          const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-          const updatedVoterIds = [...note.voterIds, state.activeUser];
-          const updatedUserVoted = [...activeUserObj.votedNoteIds, noteId];
-          const newXp = (activeUserObj.xp || 0) + 5;
-
-          await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'notes', noteId), {
-            votes: (note.votes || 0) + 1,
-            voterIds: updatedVoterIds
-          });
-
-          await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', state.activeUser), {
-            xp: newXp,
-            votedNoteIds: updatedUserVoted
-          });
-        } catch (err) {
-          console.error("Fout bij realtime stemmen:", err);
-        }
-      } else {
-        note.votes = (note.votes || 0) + 1;
-        note.voterIds.push(state.activeUser);
-        activeUserObj.votedNoteIds.push(noteId);
-        activeUserObj.xp = (activeUserObj.xp || 0) + 5;
-        refreshAll();
-      }
-
-      showToast(`Stem uitgebracht! +5 XP voor ${activeUserObj.name}`);
-    }
-
-    async function deleteNote(noteId) {
-      if (state.isLive && dbInstance) {
-        try {
-          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-          await deleteDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'notes', noteId));
-        } catch (err) {
-          console.error("Fout bij realtime verwijderen note:", err);
-        }
-      } else {
-        state.notes = state.notes.filter(n => n.id !== noteId);
-        refreshAll();
-      }
-      showToast("Post-it verwijderd");
-    }
-
-    async function saveParticipant(e) {
-      e.preventDefault();
-      const name = document.getElementById('participant-name-input').value.trim();
-      const role = document.getElementById('participant-role-input').value.trim();
-      const assignedPillar = document.getElementById('participant-pillar-select').value;
-
-      if (!name) return;
-
-      const newP = {
-        name,
-        role: role || 'Consultant',
-        assignedPillar,
-        xp: 0,
-        votedNoteIds: []
-      };
-
-      if (state.isLive && dbInstance) {
-        try {
-          const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-          const ref = await addDoc(collection(dbInstance, 'artifacts', appId, 'public', 'data', 'participants'), newP);
-          state.activeUser = ref.id;
-        } catch (err) {
-          console.error("Fout bij realtime toevoegen deelnemer:", err);
-        }
-      } else {
-        newP.id = 'p-' + Date.now();
-        state.participants.push(newP);
-        state.activeUser = newP.id;
-        refreshAll();
-      }
-
-      showToast(`Deelnemer ${name} toegevoegd!`);
-      closeParticipantModal();
-    }
-
-    async function deleteParticipant(id) {
-      if (state.isLive && dbInstance) {
-        try {
-          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-          await deleteDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', id));
-        } catch (err) {
-          console.error("Fout bij realtime verwijderen deelnemer:", err);
-        }
-      } else {
-        state.participants = state.participants.filter(p => p.id !== id);
-        if (state.activeUser === id) {
-          state.activeUser = state.participants.length > 0 ? state.participants[0].id : null;
-        }
-        refreshAll();
-      }
-      showToast("Deelnemer verwijderd");
-    }
-
-    async function claimTask(taskId, participantId) {
-      const task = state.tasks.find(t => t.id === taskId);
-      if (!task) return;
-
-      const prevAssignedId = task.assignedToId;
-      const targetUser = state.participants.find(p => p.id === participantId);
-      const newAssignedName = targetUser ? targetUser.name : null;
-      const newAssignedId = participantId || null;
-
-      if (state.isLive && dbInstance) {
-        try {
-          const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-          await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'tasks', taskId), {
-            assignedToId: newAssignedId,
-            assignedToName: newAssignedName
-          });
-
-          if (prevAssignedId && prevAssignedId !== newAssignedId) {
-            const prevUser = state.participants.find(p => p.id === prevAssignedId);
-            if (prevUser) {
-              await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', prevAssignedId), {
-                xp: Math.max(0, (prevUser.xp || 0) - 50)
-              });
-            }
-          }
-
-          if (targetUser) {
-            await updateDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'participants', targetUser.id), {
-              xp: (targetUser.xp || 0) + 50
-            });
-          }
-        } catch (err) {
-          console.error("Fout bij realtime claimen van taak:", err);
-        }
-      } else {
-        if (prevAssignedId && prevAssignedId !== newAssignedId) {
-          const prevUser = state.participants.find(p => p.id === prevAssignedId);
-          if (prevUser) prevUser.xp = Math.max(0, (prevUser.xp || 0) - 50);
-        }
-        if (targetUser) {
-          targetUser.xp = (targetUser.xp || 0) + 50;
-        }
-        task.assignedToId = newAssignedId;
-        task.assignedToName = newAssignedName;
-        refreshAll();
-      }
-
-      showToast(targetUser ? `Taak toegewezen aan ${targetUser.name}! (+50 XP)` : "Taak vrijgegeven");
-    }
-
-    async function saveNewPillar(e) {
-      e.preventDefault();
-      const title = document.getElementById('pillar-title-input').value.trim();
-      const color = document.getElementById('pillar-color-select').value;
-      const question = document.getElementById('pillar-question-input').value.trim() ||
-        "Hoe positioneren we deze pilaar als doorslaggevende enterprise differentiator richting 2030?";
-
-      if (!title) return;
-
-      const newPil = {
-        title,
-        color,
-        question,
-        createdAt: Date.now()
-      };
-
-      if (state.isLive && dbInstance) {
-        try {
-          const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-          await addDoc(collection(dbInstance, 'artifacts', appId, 'public', 'data', 'pillars'), newPil);
-        } catch (err) {
-          console.error("Fout bij toevoegen realtime pilaar:", err);
-        }
-      } else {
-        newPil.id = 'pil-' + Date.now();
-        state.pillars.push(newPil);
-        refreshAll();
-      }
-
-      showToast(`Nieuwe pilaar "${title}" toegevoegd!`);
-      closeAddPillarModal();
-    }
-
-    async function deletePillar(pillarId) {
-      if (state.pillars.length <= 1) {
-        showToast("Je moet minimaal 1 pilaar behouden!");
-        return;
-      }
-
-      if (state.isLive && dbInstance) {
-        try {
-          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-          await deleteDoc(doc(dbInstance, 'artifacts', appId, 'public', 'data', 'pillars', pillarId));
-        } catch (err) {
-          console.error("Fout bij verwijderen realtime pilaar:", err);
-        }
-      } else {
-        state.pillars = state.pillars.filter(p => p.id !== pillarId);
-        refreshAll();
-      }
-      showToast("Pilaar verwijderd");
-    }
-
-    function openSyncConfigModal() {
-      let modal = document.getElementById('modal-cloud-sync');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'modal-cloud-sync';
-        modal.className = 'fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4';
-        modal.innerHTML = `
-          <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div class="flex items-center gap-2">
-                <span class="text-xl">🚀</span>
-                <h3 class="text-base font-bold text-white">Live Multiplayer Sessie</h3>
-              </div>
-              <button onclick="closeSyncConfigModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
-            </div>
-            
-            <p class="text-xs text-slate-300 leading-relaxed">
-              Draai je dit live op Netlify of GitHub Pages met je team? Koppel hier eenmalig je gratis cloud-verbinding zodat iedereen elkaars post-its en stemmen live ziet binnenkomen.
-            </p>
-
-            <div class="space-y-2">
-              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Firebase Config JSON snippet (optioneel):</label>
-              <textarea id="custom-sync-config-input" rows="5" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 font-mono focus:outline-none focus:border-indigo-500" placeholder='{\n  "apiKey": "AIzaSy...",\n  "authDomain": "jouw-project.firebaseapp.com",\n  "projectId": "jouw-project"\n}'></textarea>
-            </div>
-
-            <div class="bg-indigo-950/40 border border-indigo-500/30 p-3 rounded-xl text-[11px] text-indigo-300 leading-relaxed">
-              💡 <strong>Tip:</strong> In deze online workspace is de live synchronisatie al automatisch actief! Op Netlify plak je hier simpelweg eenmalig de gratis config van je project.
-            </div>
-
-            <div class="flex items-center justify-end gap-2 pt-2">
-              <button onclick="closeSyncConfigModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Sluiten</button>
-              <button onclick="applyCustomSyncConfig()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md">Verbinden</button>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-      }
-      modal.classList.remove('hidden');
-    }
-
-    function closeSyncConfigModal() {
-      const modal = document.getElementById('modal-cloud-sync');
-      if (modal) modal.classList.add('hidden');
-    }
-
-    function applyCustomSyncConfig() {
-      const input = document.getElementById('custom-sync-config-input').value.trim();
-      if (!input) {
-        showToast("Geen configuratie ingevoerd.");
-        closeSyncConfigModal();
-        return;
-      }
-      try {
-        window.CUSTOM_FIREBASE_CONFIG = JSON.parse(input);
-        closeSyncConfigModal();
-        initRealtimeCloud();
-      } catch (err) {
-        showToast("Ongeldige JSON configuratie!");
-      }
-    }
-
-    function showToast(message) {
-      const container = document.getElementById('toast-container');
-      if (!container) return;
-      const t = document.createElement('div');
-      t.className = 'bg-indigo-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl border border-indigo-400/40 flex items-center gap-2 animate-bounce';
-      t.innerHTML = `<span>⚡</span><span>${escapeHtml(message)}</span>`;
-      container.appendChild(t);
-      setTimeout(() => { t.remove(); }, 3500);
-    }
-
-    window.onload = function () {
-      initRealtimeCloud();
-      switchView('brainstorm');
+    function refreshAllViews() {
       updateActiveUserHeader();
+      renderPillars();
+      renderParticipants();
+      renderOverview();
+    }
+
+    // Tab Switcher
+    window.switchTab = function(tabId) {
+      const tabs = ['pillars', 'participants', 'overview'];
+      tabs.forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (view) view.classList.toggle('hidden', t !== tabId);
+        if (btn) {
+          if (t === tabId) {
+            btn.className = "px-3.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-sm";
+          } else {
+            btn.className = "px-3.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white";
+          }
+        }
+      });
+      refreshAllViews();
+    };
+
+    // Modal Helpers
+    window.openAddNoteModal = function(preferredPillarId = null) {
+      const select = document.getElementById('modal-note-pillar');
+      if (select) {
+        select.innerHTML = '';
+        state.pillars.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.innerText = p.name;
+          if (preferredPillarId && p.id === preferredPillarId) opt.selected = true;
+          select.appendChild(opt);
+        });
+      }
+
+      const activeUser = state.participants.find(p => p.id === state.activeUser);
+      const authorPreview = document.getElementById('modal-note-author-preview');
+      if (authorPreview) {
+        authorPreview.innerText = activeUser ? activeUser.name : 'Anoniem';
+      }
+
+      const contentInput = document.getElementById('modal-note-content');
+      if (contentInput) contentInput.value = '';
+
+      document.getElementById('modal-note')?.classList.remove('hidden');
+    };
+
+    window.closeNoteModal = function() {
+      document.getElementById('modal-note')?.classList.add('hidden');
+    };
+
+    window.saveNote = function() {
+      const pillarId = document.getElementById('modal-note-pillar')?.value;
+      const category = document.getElementById('modal-note-category')?.value;
+      const content = document.getElementById('modal-note-content')?.value?.trim();
+
+      if (!content) {
+        showToast('Typ eerst de inhoud van de post-it!', 'fa-triangle-exclamation');
+        return;
+      }
+
+      const activeUser = state.participants.find(p => p.id === state.activeUser) || state.participants[0];
+
+      const newNote = {
+        id: 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        pillarId: pillarId || state.pillars[0].id,
+        category: category || 'meaning',
+        content: content,
+        authorId: activeUser.id,
+        authorName: activeUser.name,
+        votes: 0,
+        createdAt: Date.now()
+      };
+
+      state.notes.push(newNote);
+      closeNoteModal();
+      pushStateToCloud();
+      refreshAllViews();
+      showToast(`Post-it geplaatst! +10 XP toegekend aan ${activeUser.name}`, 'fa-bolt');
+    };
+
+    window.deleteNote = function(noteId) {
+      state.notes = state.notes.filter(n => n.id !== noteId);
+      pushStateToCloud();
+      refreshAllViews();
+      showToast('Post-it verwijderd.', 'fa-trash-can');
+    };
+
+    window.castVote = function(noteId) {
+      if (!state.userVotes) state.userVotes = {};
+      if (!state.userVotes[state.activeUser]) state.userVotes[state.activeUser] = {};
+
+      const hasVoted = state.userVotes[state.activeUser][noteId];
+      const targetNote = state.notes.find(n => n.id === noteId);
+      if (!targetNote) return;
+
+      if (hasVoted) {
+        // Stem intrekken
+        delete state.userVotes[state.activeUser][noteId];
+        targetNote.votes = Math.max(0, (targetNote.votes || 1) - 1);
+        showToast('Stem ingetrokken (-5 XP)');
+      } else {
+        // Stem toekennen
+        state.userVotes[state.activeUser][noteId] = true;
+        targetNote.votes = (targetNote.votes || 0) + 1;
+        showToast('Stem uitgebracht! +5 XP verdiend', 'fa-thumbs-up');
+      }
+
+      pushStateToCloud();
+      refreshAllViews();
+    };
+
+    window.openAddPillarModal = function() {
+      document.getElementById('modal-pillar-name').value = '';
+      document.getElementById('modal-pillar-tagline').value = '';
+      document.getElementById('modal-pillar-vision').value = '';
+      document.getElementById('modal-pillar')?.classList.remove('hidden');
+    };
+
+    window.closeAddPillarModal = function() {
+      document.getElementById('modal-pillar')?.classList.add('hidden');
+    };
+
+    window.saveNewPillar = function() {
+      const name = document.getElementById('modal-pillar-name')?.value?.trim();
+      const tagline = document.getElementById('modal-pillar-tagline')?.value?.trim();
+      const color = document.getElementById('modal-pillar-color')?.value || 'violet';
+      const vision = document.getElementById('modal-pillar-vision')?.value?.trim();
+
+      if (!name) {
+        showToast('Vul ten minste de naam van de pilaar in.', 'fa-triangle-exclamation');
+        return;
+      }
+
+      const newId = 'pillar-' + Date.now();
+      const colorStyles = {
+        violet: { badgeBg: 'bg-violet-500/10', badgeText: 'text-violet-400', borderCol: 'border-violet-500/30' },
+        teal: { badgeBg: 'bg-teal-500/10', badgeText: 'text-teal-400', borderCol: 'border-teal-500/30' },
+        cyan: { badgeBg: 'bg-cyan-500/10', badgeText: 'text-cyan-400', borderCol: 'border-cyan-500/30' },
+        rose: { badgeBg: 'bg-rose-500/10', badgeText: 'text-rose-400', borderCol: 'border-rose-500/30' },
+        amber: { badgeBg: 'bg-amber-500/10', badgeText: 'text-amber-400', borderCol: 'border-amber-500/30' }
+      }[color] || { badgeBg: 'bg-indigo-500/10', badgeText: 'text-indigo-400', borderCol: 'border-indigo-500/30' };
+
+      state.pillars.push({
+        id: newId,
+        name: name,
+        tagline: tagline || 'Nieuwe domeinpilaar',
+        color: color,
+        badgeBg: colorStyles.badgeBg,
+        badgeText: colorStyles.badgeText,
+        borderCol: colorStyles.borderCol,
+        visionQuestion: vision || `Welke moonshot of transformatie drijft ${name} richting 2030?`,
+        isCustom: true
+      });
+
+      closeAddPillarModal();
+      pushStateToCloud();
+      refreshAllViews();
+      showToast(`Pilaar '${name}' toegevoegd!`, 'fa-layer-group');
+    };
+
+    window.deletePillar = function(pillarId) {
+      state.pillars = state.pillars.filter(p => p.id !== pillarId);
+      // Verwijder ook bijbehorende notes
+      state.notes = state.notes.filter(n => n.pillarId !== pillarId);
+      pushStateToCloud();
+      refreshAllViews();
+      showToast('Pilaar verwijderd.', 'fa-trash-can');
+    };
+
+    window.openAddParticipantModal = function() {
+      const select = document.getElementById('modal-participant-pillar');
+      if (select) {
+        select.innerHTML = '';
+        state.pillars.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.innerText = p.name;
+          select.appendChild(opt);
+        });
+      }
+      document.getElementById('modal-participant-name').value = '';
+      document.getElementById('modal-participant-role').value = '';
+      document.getElementById('modal-participant')?.classList.remove('hidden');
+    };
+
+    window.closeParticipantModal = function() {
+      document.getElementById('modal-participant')?.classList.add('hidden');
+    };
+
+    window.saveParticipant = function() {
+      const name = document.getElementById('modal-participant-name')?.value?.trim();
+      const role = document.getElementById('modal-participant-role')?.value?.trim();
+      const pillarId = document.getElementById('modal-participant-pillar')?.value;
+
+      if (!name) {
+        showToast('Vul ten minste de naam van de deelnemer in.', 'fa-triangle-exclamation');
+        return;
+      }
+
+      const newId = 'user-' + Date.now();
+      const newParticipant = {
+        id: newId,
+        name: name,
+        role: role || 'Consultant Future of Work',
+        pillarId: pillarId || state.pillars[0].id,
+        xp: 0
+      };
+
+      state.participants.push(newParticipant);
+      state.activeUser = newId; // Wordt direct actief
+
+      closeParticipantModal();
+      pushStateToCloud();
+      refreshAllViews();
+      showToast(`Deelnemer '${name}' toegevoegd en geactiveerd!`, 'fa-user-check');
+    };
+
+    window.deleteParticipant = function(userId) {
+      if (state.participants.length <= 1) {
+        showToast('Er moet ten minste 1 deelnemer actief blijven.', 'fa-triangle-exclamation');
+        return;
+      }
+
+      state.participants = state.participants.filter(p => p.id !== userId);
+      if (state.activeUser === userId) {
+        state.activeUser = state.participants[0].id;
+      }
+
+      pushStateToCloud();
+      refreshAllViews();
+      showToast('Deelnemer verwijderd.', 'fa-trash-can');
+    };
+
+    window.setActiveUser = function(userId) {
+      state.activeUser = userId;
+      const user = state.participants.find(p => p.id === userId);
+      pushStateToCloud();
+      refreshAllViews();
+      showToast(`Profiel gewisseld naar: ${user ? user.name : 'Deelnemer'}`, 'fa-user-check');
+    };
+
+    window.claimQuest = function(questId) {
+      const quest = state.quests.find(q => q.id === questId);
+      if (!quest) return;
+
+      quest.assignedTo = state.activeUser;
+      pushStateToCloud();
+      refreshAllViews();
+      showToast(`Taak geclaimd! +50 XP verdiend voor jouw profiel.`, 'fa-award');
+    };
+
+    window.assignQuest = function(questId, userId) {
+      const quest = state.quests.find(q => q.id === questId);
+      if (!quest) return;
+
+      quest.assignedTo = userId || null;
+      pushStateToCloud();
+      refreshAllViews();
+      if (userId) {
+        const user = state.participants.find(p => p.id === userId);
+        showToast(`Taak toegewezen aan ${user ? user.name : 'deelnemer'} (+50 XP).`, 'fa-award');
+      } else {
+        showToast('Taak vrijgegeven.', 'fa-rotate-left');
+      }
+    };
+
+    window.clearAllNotes = function() {
+      if (state.notes.length === 0) {
+        showToast('Bord is al leeg.', 'fa-info');
+        return;
+      }
+      state.notes = [];
+      pushStateToCloud();
+      refreshAllViews();
+      showToast('Alle post-its zijn gewist (blanco bord).', 'fa-broom');
+    };
+
+    window.openCloudModal = function() {
+      document.getElementById('modal-cloud')?.classList.remove('hidden');
+    };
+
+    window.closeCloudModal = function() {
+      document.getElementById('modal-cloud')?.classList.add('hidden');
+    };
+
+    // ESC toets sluit alle modals
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeNoteModal();
+        closeAddPillarModal();
+        closeParticipantModal();
+        closeCloudModal();
+      }
+    });
+
+    window.onload = function() {
+      refreshAllViews();
+      updateSyncIndicator();
+      initFirebaseCloud();
     };
   </script>
 </body>
