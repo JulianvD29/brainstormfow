@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Future of Work — Workshop & Live Playboard</title>
   
-  <!-- Tailwind CSS CDN -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
   <!-- Google Fonts: Inter -->
@@ -15,6 +15,9 @@
   
   <!-- FontAwesome 6 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Canvas Confetti for Celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
   <!-- Tailwind Configuration -->
   <script>
@@ -44,7 +47,7 @@
       font-family: 'Inter', sans-serif;
     }
     
-    /* Custom subtle scrollbar */
+    /* Scrollbar styling */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -60,28 +63,30 @@
       background: rgba(100, 116, 139, 0.9);
     }
 
-    /* Pulse animation for XP counter */
-    @keyframes xpPulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.2); filter: drop-shadow(0 0 12px #f59e0b); }
-      100% { transform: scale(1); }
-    }
-    .animate-xp {
-      animation: xpPulse 0.5s ease-out;
-    }
-
-    /* Floating XP floater animation */
+    /* Floating XP Notification Animation */
     @keyframes floatUpFade {
-      0% { transform: translateY(0px) scale(0.9); opacity: 0; }
-      20% { transform: translateY(-8px) scale(1.05); opacity: 1; }
-      80% { transform: translateY(-24px) scale(1); opacity: 0.9; }
-      100% { transform: translateY(-36px) scale(0.95); opacity: 0; }
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 15px) scale(0.85);
+      }
+      20% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1.05);
+      }
+      80% {
+        opacity: 1;
+        transform: translate(-50%, -15px) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -30px) scale(0.9);
+      }
     }
     .animate-float-xp {
-      animation: floatUpFade 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: floatUpFade 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    /* Sticky note cards */
+    /* Sticky note hover interaction */
     .sticky-card {
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -92,9 +97,9 @@
 </head>
 <body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
 
-  <!-- Top Executive Navigation Bar -->
-  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-2.5 transition-all">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-all">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
       
       <!-- Brand & Title -->
       <div class="flex items-center space-x-3">
@@ -115,9 +120,9 @@
       </div>
 
       <!-- Navigation Tabs -->
-      <nav class="flex items-center bg-slate-950/80 p-1.5 rounded-xl border border-slate-800 text-xs sm:text-sm">
+      <nav class="flex items-center bg-slate-950/80 p-1.5 rounded-xl border border-slate-800 text-sm">
         <button id="tab-btn-pillars" onclick="switchTab('pillars')" class="px-3.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-sm">
-          <i class="fa-solid fa-book-open text-xs"></i>
+          <i class="fa-solid fa-table-columns text-xs"></i>
           <span>💡 Brainstorm Pilaren</span>
         </button>
         <button id="tab-btn-participants" onclick="switchTab('participants')" class="px-3.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white">
@@ -130,10 +135,10 @@
         </button>
       </nav>
 
-      <!-- Live Sync & Active User Profile Card with 20-Level Progression -->
+      <!-- User Profile, Level Progress & Cloud Sync Controls -->
       <div class="flex items-center gap-3">
         <!-- Live Sync Status Button -->
-        <button onclick="openCloudModal()" id="sync-badge" class="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer" title="Klik voor Cloud Sync details">
+        <button onclick="openCloudModal()" id="sync-badge" class="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer" title="Klik voor Cloud Sync status">
           <span class="relative flex h-2 w-2">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -141,24 +146,23 @@
           <span id="sync-status-text">Live Synchroon</span>
         </button>
 
-        <!-- Current User Profile Card -->
-        <div onclick="openParticipantModal()" class="cursor-pointer group flex items-center gap-2.5 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl transition-all shadow-sm" title="Klik om van actieve deelnemer te wisselen of naam te wijzigen">
-          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-xs font-black text-white shadow" id="header-user-avatar">
+        <!-- Current User Profile Card & FoW Level Badge -->
+        <div onclick="openParticipantModal()" class="cursor-pointer group flex items-center gap-2.5 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl transition-all shadow-sm" title="Klik om profiel te kiezen of naam aan te maken">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shadow">
             <i class="fa-solid fa-user"></i>
           </div>
-          <div class="text-left leading-none">
+          <div class="text-left leading-tight">
             <div class="flex items-center gap-1.5">
               <span id="header-user-name" class="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">Selecteer Profiel</span>
-              <span id="header-user-level-badge" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Lvl 1</span>
               <i class="fa-solid fa-angle-down text-[10px] text-slate-400"></i>
             </div>
-            <div class="flex items-center gap-2 mt-1">
-              <span id="header-user-level-title" class="text-[10px] font-semibold text-slate-400 truncate max-w-[110px]">FoW Scout</span>
-              <span class="text-[9px] text-amber-400 font-bold" id="header-user-xp">0 XP</span>
-            </div>
-            <!-- Mini Level Progress Bar -->
-            <div class="w-full bg-slate-950/80 rounded-full h-1 mt-1 overflow-hidden border border-slate-700/50">
-              <div id="header-user-level-bar" class="bg-gradient-to-r from-indigo-500 to-amber-400 h-1 rounded-full transition-all duration-500" style="width: 0%"></div>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span id="header-user-level-badge" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                Lvl 1
+              </span>
+              <span id="header-user-xp" class="text-[10px] text-amber-400 font-bold flex items-center gap-0.5">
+                <i class="fa-solid fa-bolt text-[8px]"></i> 0 XP
+              </span>
             </div>
           </div>
         </div>
@@ -167,58 +171,84 @@
     </div>
   </header>
 
-  <!-- Main Application Content Area -->
+  <!-- Main View Container -->
   <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 flex flex-col">
     
     <!-- VIEW 1: BRAINSTORM PILAREN (PAGINAMODUS / BLADZIJDES) -->
     <div id="view-pillars" class="flex-1 flex flex-col space-y-5">
       
-      <!-- Facilitator Page Navigation Banner -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-              <i class="fa-solid fa-layer-group"></i> Gefaseerde Workshop
+      <!-- Top Actions & Pillar Selection Tabs ("Bladzijdes") -->
+      <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Pilaar Verkenning</span>
+            <span id="active-pillar-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              Pilaar 1 van 4
             </span>
-            <span class="text-slate-500">•</span>
-            <span id="pillar-page-counter" class="text-xs font-bold text-slate-300">Bladzijde 1 van 4</span>
           </div>
-          <h2 class="text-xl font-black text-white mt-0.5">Brainstorm per Pilaar</h2>
+          <h2 id="active-pillar-title" class="text-xl font-black text-white flex items-center gap-2">
+            AI in Work
+          </h2>
+          <p id="active-pillar-tagline" class="text-xs text-slate-400 mt-0.5">
+            Autonome workflows, mens-AI interactie & taakverschuiving
+          </p>
         </div>
 
-        <!-- Pillar Pager Controls & Actions -->
+        <!-- Pillar Page Buttons ("Bladzijdes") -->
         <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="prevPillar()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition-all">
-            <i class="fa-solid fa-chevron-left text-[10px]"></i>
-            <span>Vorige</span>
-          </button>
-          
-          <div id="pillar-tabs-container" class="flex items-center gap-1.5 overflow-x-auto py-1">
-            <!-- Dynamisch gevuld met bladzijde-knoppen -->
+          <div id="pillar-page-tabs" class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <!-- Dynamically populated page buttons -->
           </div>
 
-          <button onclick="nextPillar()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition-all">
-            <span>Volgende</span>
-            <i class="fa-solid fa-chevron-right text-[10px]"></i>
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button onclick="prevPillarPage()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700" title="Vorige pilaar">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button onclick="nextPillarPage()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700" title="Volgende pilaar">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
 
-          <div class="h-5 w-px bg-slate-800 mx-1"></div>
+          <div class="h-6 w-px bg-slate-800 mx-1 hidden sm:block"></div>
 
-          <button onclick="openAddPillarModal()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition-all shadow-sm">
+          <button onclick="openAddPillarModal()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition-all shadow-sm">
             <i class="fa-solid fa-plus text-indigo-400"></i>
             <span>+ Pilaar</span>
           </button>
-          
-          <button onclick="clearAllNotes()" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-300 text-xs font-medium border border-slate-800 hover:border-red-800/40 transition-all" title="Bord opschonen">
-            <i class="fa-solid fa-trash-can"></i>
+          <button onclick="openAddNoteModal()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all">
+            <i class="fa-solid fa-note-sticky"></i>
+            <span>+ Post-It Plakken (+20 XP)</span>
           </button>
         </div>
       </div>
 
-      <!-- Active Pillar Page Container (Dynamisch gevuld met 4 kolommen: Betekenis, Wel, Niet, Toekomst) -->
-      <div id="active-pillar-page-container" class="flex-1 flex flex-col space-y-4">
-        <!-- Live gerenderd door renderPillars() -->
+      <!-- 4 Columns Brainstorm Grid (Betekenis, Wel, Niet, Toekomst) -->
+      <div id="pillar-columns-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+        <!-- Live generated by renderCurrentPillarPage() -->
       </div>
+
+      <!-- Pillar Synthesis & Milestone Closeout Block -->
+      <div id="pillar-synthesis-section" class="bg-gradient-to-r from-slate-900/90 via-indigo-950/30 to-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5 mt-4">
+        <div class="flex-1 w-full">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              <i class="fa-solid fa-flag-checkered mr-1"></i> Facilitator Conclusie
+            </span>
+            <span id="synthesis-status-badge" class="text-[10px] text-slate-400 font-medium">In bewerking</span>
+          </div>
+          <h3 class="text-sm font-extrabold text-white">Uitkomsten & Samenvatting van deze Pilaar</h3>
+          <p class="text-[11px] text-slate-400 mb-2">Vat de belangrijkste inzichten, afbakeningen en afspraken samen voordat we deze pilaar closen.</p>
+          <textarea id="pillar-synthesis-input" onchange="savePillarSynthesis(this.value)" rows="2" placeholder="Wat is de kernconclusie van deze brainstorm? (Bijv. scherpe scope, marktkans, wat we absoluut niet doen...)" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 placeholder-slate-600"></textarea>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
+          <button onclick="closePillarWithCelebration()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all active:scale-95">
+            <i class="fa-solid fa-trophy text-amber-300"></i>
+            <span>Pilaar Afronden & Closen 🎉</span>
+          </button>
+        </div>
+      </div>
+
     </div>
 
     <!-- VIEW 2: DEELNEMERS BEHEER -->
@@ -226,29 +256,35 @@
       <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80">
         <div>
           <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
-            <span>👥 Deelnemers & Rollen Beheer</span>
+            <span>👥 Deelnemers Beheer</span>
+            <span id="count-participants" class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">0</span>
           </h2>
           <p class="text-xs text-slate-400 mt-1">
-            Beheer wie er meedoet aan de sessie, wijs focuspilaren toe of wissel van actieve gebruiker.
+            Meld je aan met je naam om post-its te plaatsen (+20 XP), te stemmen (+10 XP) en taken te claimen (+50 XP).
           </p>
         </div>
 
-        <button onclick="openAddParticipantModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all">
-          <i class="fa-solid fa-user-plus"></i>
-          <span>+ Deelnemer Toevoegen</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="clearAllParticipants()" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-300 text-xs font-medium border border-slate-800 hover:border-red-800/40 transition-all" title="Lijst leegmaken">
+            <i class="fa-solid fa-trash-can mr-1"></i> Deelnemers Wissen
+          </button>
+          <button onclick="openParticipantModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>+ Deelnemer Toevoegen</span>
+          </button>
+        </div>
       </div>
 
-      <!-- Deelnemers Grid -->
+      <!-- Deelnemers Grid / Empty State -->
       <div id="participants-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        <!-- Wordt live gerenderd -->
+        <!-- Live rendered -->
       </div>
     </div>
 
     <!-- VIEW 3: OVERZICHT & XP LEADERBOARD -->
     <div id="view-overview" class="hidden flex-1 flex flex-col space-y-8">
       
-      <!-- Leaderboard Header Card -->
+      <!-- Leaderboard Header Summary -->
       <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-6 rounded-3xl border border-indigo-500/20 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <span class="text-xs font-bold tracking-wider uppercase text-amber-400 flex items-center gap-1.5 mb-1">
@@ -256,11 +292,11 @@
           </span>
           <h2 class="text-2xl font-black text-white">Workshop XP & Pilaar Toewijzing</h2>
           <p class="text-xs text-slate-400 mt-1 max-w-xl">
-            Transparant inzicht in ieders inbreng: post-its geplaatst (+10 XP), stemmen uitgebracht (+5 XP) en voltooide team quests (+50 XP).
+            Transparant overzicht: post-its (+20 XP), stemmen (+10 XP), nieuwe quests toevoegen (+25 XP) en taken claimen (+50 XP).
           </p>
         </div>
 
-        <!-- Quick Summary Counters -->
+        <!-- Quick Summary Stats -->
         <div class="grid grid-cols-3 gap-3 w-full md:w-auto">
           <div class="bg-slate-950/60 border border-slate-800 px-4 py-2.5 rounded-2xl text-center">
             <div id="stat-total-notes" class="text-lg font-black text-indigo-400">0</div>
@@ -277,7 +313,7 @@
         </div>
       </div>
 
-      <!-- Team Quests / Taken Sectie (+50 XP) -->
+      <!-- Team Quests & Follow-up Taken -->
       <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
@@ -286,26 +322,22 @@
               <span>Team Quests & Follow-up Taken</span>
             </h3>
             <p class="text-xs text-slate-400 mt-0.5">
-              Claim een opdracht om direct <span class="text-amber-400 font-bold">+50 XP</span> te verdienen voor jouw profiel.
+              Claim een opdracht voor <span class="text-amber-400 font-bold">+50 XP</span> of voeg een nieuwe quest toe voor <span class="text-violet-400 font-bold">+25 XP</span>.
             </p>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-semibold bg-amber-500/10 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/30">
-              50 XP per taak
-            </span>
-            <button onclick="openAddQuestModal()" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md">
-              <i class="fa-solid fa-plus text-[11px]"></i>
-              <span>+ Taak Toevoegen</span>
-            </button>
-          </div>
+
+          <button onclick="openAddQuestModal()" class="px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-violet-600/30 transition-all">
+            <i class="fa-solid fa-plus"></i>
+            <span>+ Taak Toevoegen (+25 XP)</span>
+          </button>
         </div>
 
-        <div id="quests-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Live gerenderd via renderOverview() -->
+        <div id="quests-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <!-- Live rendered -->
         </div>
       </div>
 
-      <!-- Pilaar Toewijzing Matrix & 20-Level Leaderboard Table -->
+      <!-- Pilaar Toewijzing Matrix & Leaderboard Table -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <!-- Pilaar Toewijzing Matrix -->
@@ -317,17 +349,17 @@
           <p class="text-xs text-slate-400 mb-4">Wie pakt primair eigenaarschap per domein?</p>
           
           <div id="matrix-pillars-container" class="space-y-3 flex-1">
-            <!-- Live gerenderd -->
+            <!-- Live rendered -->
           </div>
         </div>
 
-        <!-- Leaderboard Ranglijst -->
+        <!-- Leaderboard Table -->
         <div class="lg:col-span-2 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6">
           <h3 class="text-base font-extrabold text-white mb-1 flex items-center gap-2">
             <i class="fa-solid fa-ranking-star text-amber-400"></i>
-            <span>Workshop XP Ranglijst & Level Titels</span>
+            <span>Workshop XP Ranglijst</span>
           </h3>
-          <p class="text-xs text-slate-400 mb-4">Realtime score en status binnen het 20-level FoW groeipad.</p>
+          <p class="text-xs text-slate-400 mb-4">Realtime score op basis van alle interacties.</p>
 
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs text-slate-300">
@@ -335,16 +367,16 @@
                 <tr>
                   <th class="py-3 px-3">Rang</th>
                   <th class="py-3 px-3">Deelnemer</th>
-                  <th class="py-3 px-3">FoW Level & Titel</th>
-                  <th class="py-3 px-3">Focus Pilaar</th>
-                  <th class="py-3 px-2 text-center">Post-its (+10)</th>
-                  <th class="py-3 px-2 text-center">Stemmen (+5)</th>
-                  <th class="py-3 px-2 text-center">Taken (+50)</th>
+                  <th class="py-3 px-3">Level</th>
+                  <th class="py-3 px-2 text-center">Post-its (+20)</th>
+                  <th class="py-3 px-2 text-center">Stemmen (+10)</th>
+                  <th class="py-3 px-2 text-center">Nieuwe Quest (+25)</th>
+                  <th class="py-3 px-2 text-center">Geclaimd (+50)</th>
                   <th class="py-3 px-3 text-right">Totaal XP</th>
                 </tr>
               </thead>
               <tbody id="leaderboard-table-body" class="divide-y divide-slate-800/60 font-medium">
-                <!-- Live gerenderd -->
+                <!-- Live rendered -->
               </tbody>
             </table>
           </div>
@@ -356,13 +388,13 @@
 
   </main>
 
-  <!-- MODAL 1: NIEUWE POST-IT PLAKKEN (4 KERNTHEMA'S) -->
+  <!-- MODAL 1: NIEUWE POST-IT PLAKKEN (+20 XP) -->
   <div id="modal-note" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl p-6 relative">
       <div class="flex items-center justify-between pb-4 border-b border-slate-800">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <i class="fa-solid fa-pen-nib text-indigo-400"></i>
-          <span>Nieuwe Post-It Plakken (+10 XP)</span>
+          <span>Nieuwe Post-It Plakken (+20 XP)</span>
         </h3>
         <button onclick="closeNoteModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
           <i class="fa-solid fa-xmark text-lg"></i>
@@ -371,25 +403,25 @@
 
       <div class="mt-4 space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Kies Pilaar</label>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Pilaar</label>
           <select id="modal-note-pillar" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-            <!-- Wordt dynamisch gevuld met alle pilaren -->
+            <!-- Dynamically populated -->
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Kies Vraag / Categorie</label>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Onderwerp / Kolom</label>
           <select id="modal-note-category" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
             <option value="meaning">1. Betekenis (Wat betekent dit voor ons?)</option>
             <option value="wel">2. Wat doen we WÉL? (Onderwerpen & waarde)</option>
             <option value="niet">3. Wat doen we NIET? (Grenzen & uitsluitingen)</option>
-            <option value="moonshot">4. Toekomst (Toekomstvisie & perspectief)</option>
+            <option value="toekomst">4. 🚀 Toekomst (Visie, moonshot & horizon)</option>
           </select>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1">Inhoud Post-it</label>
-          <textarea id="modal-note-content" rows="4" placeholder="Typ hier jouw observatie, idee of afbakening..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-slate-500"></textarea>
+          <textarea id="modal-note-content" rows="4" placeholder="Typ hier jouw inbreng, idee of stelling..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-slate-500"></textarea>
         </div>
 
         <div class="flex items-center justify-between pt-2">
@@ -399,7 +431,7 @@
           </div>
           <div class="flex items-center gap-2">
             <button onclick="closeNoteModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Annuleren</button>
-            <button onclick="saveNote()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30">Plak Post-It (+10 XP)</button>
+            <button onclick="saveNote()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30">Plak Post-It (+20 XP)</button>
           </div>
         </div>
       </div>
@@ -449,12 +481,12 @@
     </div>
   </div>
 
-  <!-- MODAL 3: DEELNEMER TOEVOEGEN -->
+  <!-- MODAL 3: DEELNEMER TOEVOEGEN (ALLEEN NAAM) -->
   <div id="modal-participant" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-sm shadow-2xl p-6 relative">
       <div class="flex items-center justify-between pb-4 border-b border-slate-800">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-user-gear text-indigo-400"></i>
+          <i class="fa-solid fa-user-plus text-indigo-400"></i>
           <span>Deelnemer Toevoegen</span>
         </h3>
         <button onclick="closeParticipantModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
@@ -464,37 +496,25 @@
 
       <div class="mt-4 space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Volledige Naam</label>
-          <input type="text" id="modal-participant-name" placeholder="bijv. Sarah de Vries" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Functie / Rol in het team</label>
-          <input type="text" id="modal-participant-role" placeholder="bijv. Senior Consultant Future of Work" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Primaire Focus Pilaar</label>
-          <select id="modal-participant-pillar" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-            <!-- Dynamisch gevuld -->
-          </select>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Jouw Naam</label>
+          <input type="text" id="modal-participant-name" placeholder="Typ je volledige naam..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" onkeydown="if(event.key==='Enter') saveParticipant()">
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
           <button onclick="closeParticipantModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Annuleren</button>
-          <button onclick="saveParticipant()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg">Deelnemer Opslaan</button>
+          <button onclick="saveParticipant()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg">Opslaan & Meedoen</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL 4: NIEUWE TEAM TAAK TOEVOEGEN -->
-  <div id="modal-add-quest" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
+  <!-- MODAL 4: NIEUWE QUEST TOEVOEGEN (+25 XP) -->
+  <div id="modal-quest" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-sm shadow-2xl p-6 relative">
       <div class="flex items-center justify-between pb-4 border-b border-slate-800">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-bullseye text-amber-400"></i>
-          <span>Nieuwe Team Quest Toevoegen (+50 XP)</span>
+          <i class="fa-solid fa-bullseye text-violet-400"></i>
+          <span>Nieuwe Quest Toevoegen (+25 XP)</span>
         </h3>
         <button onclick="closeAddQuestModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
           <i class="fa-solid fa-xmark text-lg"></i>
@@ -503,21 +523,57 @@
 
       <div class="mt-4 space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Naam van de Taak / Opdracht</label>
-          <input type="text" id="modal-quest-title" placeholder="bijv. Klantpresentatie over Agentic AI voorbereiden" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Taak Titel</label>
+          <input type="text" id="modal-quest-title" placeholder="bijv. Klantpresentatie structuur opstellen..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" onkeydown="if(event.key==='Enter') saveNewQuest()">
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
           <button onclick="closeAddQuestModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Annuleren</button>
-          <button onclick="saveNewQuest()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 shadow-lg">Taak Toevoegen</button>
+          <button onclick="saveNewQuest()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 shadow-lg">Quest Toevoegen (+25 XP)</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL 5: CLOUD SYNC INFORMATIE -->
+  <!-- MODAL 5: CELEBRATION MILESTONE MODAL -->
+  <div id="modal-celebration" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-gradient-to-b from-slate-900 to-indigo-950 border border-indigo-500/50 rounded-3xl w-full max-w-md shadow-2xl p-6 sm:p-8 text-center relative overflow-hidden">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-500 flex items-center justify-center text-slate-950 text-3xl font-black shadow-xl shadow-amber-500/20 mb-4 animate-bounce">
+        <i class="fa-solid fa-crown"></i>
+      </div>
+      
+      <span class="text-xs font-extrabold uppercase tracking-widest text-amber-400">Milestone Bereikt!</span>
+      <h3 id="celebration-pillar-name" class="text-xl font-black text-white mt-1">Pilaar Afgerond 🎉</h3>
+      
+      <p id="celebration-summary-text" class="text-xs text-slate-300 mt-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-left italic">
+        "Conclusies succesvol vastgelegd."
+      </p>
+
+      <div class="grid grid-cols-2 gap-2.5 my-4">
+        <div class="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+          <div id="celebration-stat-notes" class="text-base font-black text-indigo-400">0</div>
+          <div class="text-[10px] text-slate-400">Post-its</div>
+        </div>
+        <div class="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+          <div id="celebration-stat-votes" class="text-base font-black text-amber-400">0</div>
+          <div class="text-[10px] text-slate-400">Stemmen</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 mt-4">
+        <button onclick="closeCelebrationModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all">
+          Sluiten
+        </button>
+        <button onclick="closeCelebrationModal(); nextPillarPage();" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all">
+          Volgende Pilaar &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 6: CLOUD SYNC DIAGNOSTICS -->
   <div id="modal-cloud" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl p-6 relative">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
       <div class="flex items-center justify-between pb-4 border-b border-slate-800">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <i class="fa-solid fa-cloud text-emerald-400"></i>
@@ -532,23 +588,14 @@
         <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 flex items-center gap-3">
           <div id="cloud-indicator-circle" class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
           <div>
-            <div id="cloud-indicator-title" class="font-bold text-slate-200">Firebase Firestore Verbonden</div>
+            <div id="cloud-indicator-title" class="font-bold text-slate-200">Firebase Geïntegreerd</div>
             <div id="cloud-indicator-desc" class="text-[11px] text-slate-400">Project: brainstormfow</div>
           </div>
         </div>
 
         <p>
-          Wanneer deze pagina draait via <strong>Netlify</strong> of <strong>GitHub Pages</strong>, verbinden alle geopende laptops met dezelfde realtime Firestore database. Wijzigingen synchroniseren live binnen 0,5 seconde.
+          Wanneer deze pagina draait via <strong>Netlify</strong>, verbinden alle geopende laptops met dezelfde realtime Firestore collectie.
         </p>
-
-        <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-[11px]">
-          <strong class="font-bold block mb-1">💡 Tip voor Firebase Console:</strong>
-          Als stemmen of post-its niet tussen apparaten updaten, controleer in project <span class="font-mono">brainstormfow</span>:
-          <ul class="list-disc pl-4 mt-1 space-y-1">
-            <li><strong>Authentication &gt; Sign-in method &gt; Anoniem</strong> staat op "Ingeschakeld".</li>
-            <li><strong>Firestore Database &gt; Regels</strong> staat op <span class="font-mono">allow read, write: if true;</span>.</li>
-          </ul>
-        </div>
 
         <div class="flex justify-end pt-2">
           <button onclick="closeCloudModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-700">Sluiten</button>
@@ -565,27 +612,16 @@
     </div>
   </div>
 
-  <!-- Special Level Up Celebration Modal -->
-  <div id="level-up-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-500 transform -translate-y-12 opacity-0">
-    <div class="px-6 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 text-white shadow-2xl border-2 border-amber-300 flex items-center gap-4">
-      <div class="text-3xl animate-bounce" id="level-up-icon">🏆</div>
-      <div>
-        <div class="text-[10px] font-black uppercase tracking-widest text-amber-200">Level Gevorderd!</div>
-        <div class="text-base font-black flex items-center gap-2">
-          <span id="level-up-number">Level 2</span> — <span id="level-up-title" class="text-amber-100">Curious Explorer</span>
-        </div>
-        <div class="text-[11px] text-slate-200 mt-0.5" id="level-up-desc">Nieuwe bevoegdheid ontgrendeld in het FoW ecosysteem.</div>
-      </div>
-    </div>
-  </div>
+  <!-- Floating XP Gain Canvas Container -->
+  <div id="xp-floating-container" class="fixed top-16 right-8 z-50 pointer-events-none"></div>
 
-  <!-- FIREBASE & APPLICATION LOGIC (Strict ESM with standard JS comments) -->
+  <!-- JAVASCRIPT LOGIC & MODULE CODE -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Firebase configuratie
+    /* Firebase Configuration */
     const firebaseConfig = {
       apiKey: "AIzaSyCSMhYvF2zoAsVqbFS2IjHPvjH2_5YN6Yo",
       authDomain: "brainstormfow.firebaseapp.com",
@@ -598,162 +634,94 @@
     let db = null;
     let auth = null;
     let isCloudSyncActive = false;
-    let currentPillarIndex = 0; // Huidige actieve bladzijde
 
-    // 20 Progressive FoW Levels met toenemende moeilijkheidsgraad
+    /* Web Audio Sound Effects */
+    let audioCtx = null;
+    function playAudioTone(type = 'xp') {
+      try {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) audioCtx = new AudioContextClass();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        if (!audioCtx) return;
+
+        const now = audioCtx.currentTime;
+        if (type === 'xp') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.15); // G5
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } else if (type === 'celebration') {
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + (i * 0.08));
+            gain.gain.setValueAtTime(0.2, now + (i * 0.08));
+            gain.gain.exponentialRampToValueAtTime(0.001, now + (i * 0.08) + 0.4);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + (i * 0.08));
+            osc.stop(now + (i * 0.08) + 0.45);
+          });
+        }
+      } catch (e) {
+        /* Audio playback is optional; fail silently if user blocked audio */
+      }
+    }
+
+    /* 20 Future of Work Progression Levels */
     const FOW_LEVELS = [
-      { lvl: 1, minXp: 0, title: "FoW Scout", icon: "🌱", desc: "Startende verkenner van het Future of Work domein." },
-      { lvl: 2, minXp: 20, title: "Curious Explorer", icon: "🔍", desc: "Ziet eerste signalen en stelt verfrissende vragen." },
-      { lvl: 3, minXp: 50, title: "Digital Pioneer", icon: "⚡", desc: "Experimenteert actief met nieuwe samenwerkingsvormen." },
-      { lvl: 4, minXp: 90, title: "Workflow Observer", icon: "🧭", desc: "Herstelt frictie en doorbreekt inefficiënte gewoontes." },
-      { lvl: 5, minXp: 140, title: "Ideation Spark", icon: "💡", desc: "Groeit uit tot betrouwbare aanjager van creatieve sessies." },
-      { lvl: 6, minXp: 200, title: "Experience Thinker", icon: "🎯", desc: "Koppelt productiviteit aan menselijke beleving en welzijn." },
-      { lvl: 7, minXp: 270, title: "AI Collaborator", icon: "🤖", desc: "Ontwerpt krachtige synergie tussen mens en intelligente agenten." },
-      { lvl: 8, minXp: 350, title: "Sovereignty Sentry", icon: "🛡️", desc: "Bewaakt digitale autonomie, ethiek en strategisch data-eigendom." },
-      { lvl: 9, minXp: 445, title: "Play Catalyst", icon: "🎲", desc: "Past gedragspsychologie en serious gaming toe op transities." },
-      { lvl: 10, minXp: 555, title: "Workforce Designer", icon: "🏗️", desc: "Bouwt toekomstbestendige functiehuizen en skills-frameworks." },
-      { lvl: 11, minXp: 680, title: "TOM Navigator", icon: "⚙️", desc: "Vertaalt ambities naar een wendbaar Target Operating Model." },
-      { lvl: 12, minXp: 825, title: "Strategic Advisor", icon: "📊", desc: "Formuleert scherpe business cases en stuurt op meetbare waarde." },
-      { lvl: 13, minXp: 990, title: "Transformation Driver", icon: "🚀", desc: "Trekt complexe verandertrajecten vlot door de organisatie." },
-      { lvl: 14, minXp: 1180, title: "Change Champion", icon: "🔥", desc: "Overwint structurele weerstand en creëert blijvende adoptie." },
-      { lvl: 15, minXp: 1400, title: "C-Suite Challenger", icon: "👔", desc: "Spreekt de taal van de boardroom en daagt de directie scherp uit." },
-      { lvl: 16, minXp: 1650, title: "Ecosystem Architect", icon: "🌐", desc: "Verbindt interne disciplines met externe partnernetwerken." },
-      { lvl: 17, minXp: 1940, title: "Pillar Visionary", icon: "🔮", desc: "Bepaalt de meerjarenkoers van strategische innovatiepilaren." },
-      { lvl: 18, minXp: 2270, title: "Principal Consultant", icon: "⭐", desc: "Erkend thought-leader en baken van inhoudelijke autoriteit." },
-      { lvl: 19, minXp: 2650, title: "Future Paradigm Shaper", icon: "👑", desc: "Herschrijft de spelregels van modern werk op schaal." },
-      { lvl: 20, minXp: 3100, title: "Autonomous Future Partner", icon: "🌌", desc: "Hoogste topniveau: orkestreert de volledige organisatie van morgen." }
+      { level: 1,  title: "FoW Scout", minXP: 0, color: "text-slate-400 bg-slate-800" },
+      { level: 2,  title: "Curious Explorer", minXP: 20, color: "text-blue-400 bg-blue-950/60" },
+      { level: 3,  title: "Digital Pioneer", minXP: 50, color: "text-cyan-400 bg-cyan-950/60" },
+      { level: 4,  title: "Workflow Observer", minXP: 90, color: "text-teal-400 bg-teal-950/60" },
+      { level: 5,  title: "Ideation Spark", minXP: 140, color: "text-emerald-400 bg-emerald-950/60" },
+      { level: 6,  title: "Experience Thinker", minXP: 200, color: "text-green-400 bg-green-950/60" },
+      { level: 7,  title: "AI Collaborator", minXP: 270, color: "text-indigo-400 bg-indigo-950/60" },
+      { level: 8,  title: "Sovereignty Sentry", minXP: 350, color: "text-violet-400 bg-violet-950/60" },
+      { level: 9,  title: "Play Catalyst", minXP: 440, color: "text-fuchsia-400 bg-fuchsia-950/60" },
+      { level: 10, title: "Workforce Designer", minXP: 540, color: "text-pink-400 bg-pink-950/60" },
+      { level: 11, title: "TOM Navigator", minXP: 650, color: "text-rose-400 bg-rose-950/60" },
+      { level: 12, title: "Strategic Advisor", minXP: 780, color: "text-amber-400 bg-amber-950/60" },
+      { level: 13, title: "Transformation Driver", minXP: 920, color: "text-orange-400 bg-orange-950/60" },
+      { level: 14, title: "Change Champion", minXP: 1080, color: "text-yellow-400 bg-yellow-950/60" },
+      { level: 15, title: "C-Suite Challenger", minXP: 1260, color: "text-lime-400 bg-lime-950/60" },
+      { level: 16, title: "Ecosystem Architect", minXP: 1460, color: "text-emerald-300 bg-emerald-900/60" },
+      { level: 17, title: "Pillar Visionary", minXP: 1680, color: "text-cyan-300 bg-cyan-900/60" },
+      { level: 18, title: "Principal Consultant", minXP: 1920, color: "text-indigo-300 bg-indigo-900/60" },
+      { level: 19, title: "Future Paradigm Shaper", minXP: 2200, color: "text-violet-300 bg-violet-900/60" },
+      { level: 20, title: "Autonomous Partner", minXP: 2500, color: "text-amber-300 bg-amber-900/60" }
     ];
 
-    function getLevelInfo(xp) {
+    function getFoWLevel(xp) {
       let current = FOW_LEVELS[0];
-      let next = FOW_LEVELS[1];
-      for (let i = FOW_LEVELS.length - 1; i >= 0; i--) {
-        if (xp >= FOW_LEVELS[i].minXp) {
+      let next = FOW_LEVELS[1] || null;
+      for (let i = 0; i < FOW_LEVELS.length; i++) {
+        if (xp >= FOW_LEVELS[i].minXP) {
           current = FOW_LEVELS[i];
           next = FOW_LEVELS[i + 1] || null;
+        } else {
           break;
         }
       }
-      if (!next) {
-        return { ...current, nextXp: current.minXp, nextTitle: 'Max Level', progress: 100, isMax: true };
-      }
-      const range = next.minXp - current.minXp;
-      const progressInLevel = xp - current.minXp;
-      const progress = Math.min(100, Math.max(0, Math.round((progressInLevel / range) * 100)));
-      return { ...current, nextXp: next.minXp, nextTitle: next.title, progress, isMax: false };
+      return { ...current, next };
     }
 
-    function showLevelUpCelebration(levelInfo) {
-      const modal = document.getElementById('level-up-toast');
-      const numEl = document.getElementById('level-up-number');
-      const titleEl = document.getElementById('level-up-title');
-      const iconEl = document.getElementById('level-up-icon');
-      const descEl = document.getElementById('level-up-desc');
-
-      if (!modal) return;
-
-      if (numEl) numEl.innerText = `Level ${levelInfo.lvl}`;
-      if (titleEl) titleEl.innerText = levelInfo.title;
-      if (iconEl) iconEl.innerText = levelInfo.icon || '🏆';
-      if (descEl) descEl.innerText = levelInfo.desc || 'Nieuw niveau bereikt!';
-
-      modal.classList.remove('-translate-y-12', 'opacity-0');
-      modal.classList.add('translate-y-0', 'opacity-100');
-
-      clearTimeout(window._lvlUpTimer);
-      window._lvlUpTimer = setTimeout(() => {
-        modal.classList.remove('translate-y-0', 'opacity-100');
-        modal.classList.add('-translate-y-12', 'opacity-0');
-      }, 4500);
-    }
-
-    function playXpChime(amount, isLevelUp = false) {
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        const now = ctx.currentTime;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-
-        if (isLevelUp) {
-          // Level-Up Fanfare
-          osc.frequency.setValueAtTime(440.00, now); // A4
-          osc.frequency.setValueAtTime(554.37, now + 0.10); // C#5
-          osc.frequency.setValueAtTime(659.25, now + 0.20); // E5
-          osc.frequency.setValueAtTime(880.00, now + 0.32); // A5
-          gain.gain.setValueAtTime(0.3, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
-          osc.start(now);
-          osc.stop(now + 0.85);
-        } else if (amount >= 50) {
-          // Taak Fanfare (+50)
-          osc.frequency.setValueAtTime(523.25, now); // C5
-          osc.frequency.setValueAtTime(659.25, now + 0.09); // E5
-          osc.frequency.setValueAtTime(783.99, now + 0.18); // G5
-          osc.frequency.setValueAtTime(1046.50, now + 0.27); // C6
-          gain.gain.setValueAtTime(0.25, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
-          osc.start(now);
-          osc.stop(now + 0.65);
-        } else {
-          // XP Coin Ping (+5 / +10)
-          osc.frequency.setValueAtTime(587.33, now); // D5
-          osc.frequency.setValueAtTime(880.00, now + 0.08); // A5
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-          osc.start(now);
-          osc.stop(now + 0.35);
-        }
-      } catch (e) {
-        // Audio fallback indien door browser gedempt
-      }
-    }
-
-    function triggerXpGain(amount, reason) {
-      const activeUser = state.participants.find(p => p.id === state.activeUser);
-      const prevXp = activeUser ? calculateUserXP(activeUser.id) : 0;
-      const prevLvlInfo = getLevelInfo(prevXp);
-
-      // Bereken nieuw level
-      const newXp = prevXp + amount;
-      const newLvlInfo = getLevelInfo(newXp);
-      const isLevelUp = newLvlInfo.lvl > prevLvlInfo.lvl;
-
-      playXpChime(amount, isLevelUp);
-
-      if (isLevelUp) {
-        showLevelUpCelebration(newLvlInfo);
-      }
-
-      // Pulseer teller in header
-      const xpEl = document.getElementById('header-user-xp');
-      if (xpEl) {
-        xpEl.classList.remove('animate-xp');
-        void xpEl.offsetWidth; // Reflow
-        xpEl.classList.add('animate-xp');
-      }
-
-      // Zwevende feestelijke XP floater
-      const floater = document.createElement('div');
-      floater.className = 'fixed z-50 pointer-events-none flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-950 font-black text-xs shadow-2xl shadow-amber-500/30 border border-amber-200 animate-float-xp';
-      floater.style.top = '72px';
-      floater.style.right = '24px';
-      floater.innerHTML = `
-        <i class="fa-solid fa-bolt text-amber-900"></i>
-        <span>+${amount} XP!</span>
-        <span class="text-[10px] font-bold text-slate-800 opacity-80">${reason || ''}</span>
-      `;
-      document.body.appendChild(floater);
-      setTimeout(() => floater.remove(), 1800);
-    }
-
-    // Default Sessie State
+    /* Default Clean Session State */
     const defaultState = {
-      activeUser: 'user-1',
+      activeUser: null,
+      activePillarIndex: 0,
       userVotes: {}, // { [userId]: { [noteId]: true } }
       pillars: [
         {
@@ -764,7 +732,8 @@
           badgeBg: 'bg-indigo-500/10',
           badgeText: 'text-indigo-400',
           borderCol: 'border-indigo-500/30',
-          accentBg: 'bg-indigo-600',
+          synthesis: '',
+          isClosed: false,
           isCustom: false
         },
         {
@@ -775,7 +744,8 @@
           badgeBg: 'bg-emerald-500/10',
           badgeText: 'text-emerald-400',
           borderCol: 'border-emerald-500/30',
-          accentBg: 'bg-emerald-600',
+          synthesis: '',
+          isClosed: false,
           isCustom: false
         },
         {
@@ -786,7 +756,8 @@
           badgeBg: 'bg-amber-500/10',
           badgeText: 'text-amber-400',
           borderCol: 'border-amber-500/30',
-          accentBg: 'bg-amber-600',
+          synthesis: '',
+          isClosed: false,
           isCustom: false
         },
         {
@@ -797,48 +768,24 @@
           badgeBg: 'bg-fuchsia-500/10',
           badgeText: 'text-fuchsia-400',
           borderCol: 'border-fuchsia-500/30',
-          accentBg: 'bg-fuchsia-600',
+          synthesis: '',
+          isClosed: false,
           isCustom: false
         }
       ],
-      participants: [
-        { id: 'user-1', name: 'Executive Lead', role: 'Partner / Lead FoW', pillarId: 'pillar-ai', xp: 50 },
-        { id: 'user-2', name: 'Strategic Consultant', role: 'Senior Strategy Consultant', pillarId: 'pillar-xla', xp: 20 },
-        { id: 'user-3', name: 'Change Specialist', role: 'Transformation & People Lead', pillarId: 'pillar-playification', xp: 10 }
-      ],
-      notes: [
-        {
-          id: 'note-sample-1',
-          pillarId: 'pillar-ai',
-          category: 'meaning',
-          content: 'Niet tooling centraal stellen, maar het herontwerp van taakverdeling tussen mens en AI agent.',
-          authorId: 'user-1',
-          authorName: 'Executive Lead',
-          votes: 3,
-          createdAt: Date.now() - 3600000
-        },
-        {
-          id: 'note-sample-2',
-          pillarId: 'pillar-xla',
-          category: 'wel',
-          content: 'Productiviteitsverlies en frictie kwantificeren met sentiment-analyse en XLA dashboards.',
-          authorId: 'user-2',
-          authorName: 'Strategic Consultant',
-          votes: 2,
-          createdAt: Date.now() - 1800000
-        }
-      ],
+      participants: [], // Clean slate by default
+      notes: [],        // Clean slate by default
       quests: [
-        { id: 'quest-1', title: 'Opmaak bestaande documenten herzien en opschonen', assignedTo: null, xpReward: 50 },
-        { id: 'quest-2', title: 'Onderwerp bedenken voor een eerste kennissessie', assignedTo: null, xpReward: 50 },
-        { id: 'quest-3', title: 'Verder uitwerken aan algehele visie document FoW', assignedTo: null, xpReward: 50 },
-        { id: 'quest-4', title: 'Teamuitje organiseren', assignedTo: null, xpReward: 50 }
+        { id: 'quest-1', title: 'Opmaak bestaande documenten herzien en opschonen', createdById: 'system', assignedTo: null },
+        { id: 'quest-2', title: 'Onderwerp bedenken voor een eerste kennissessie', createdById: 'system', assignedTo: null },
+        { id: 'quest-3', title: 'Verder uitwerken aan algehele visie document FoW', createdById: 'system', assignedTo: null },
+        { id: 'quest-4', title: 'Teamuitje organiseren', createdById: 'system', assignedTo: null }
       ]
     };
 
-    // Actieve State
     let state = JSON.parse(JSON.stringify(defaultState));
 
+    /* UI Feedback Helpers */
     function showToast(message, icon = 'fa-check') {
       const toastEl = document.getElementById('toast');
       const msgEl = document.getElementById('toast-message');
@@ -858,6 +805,18 @@
       }, 3000);
     }
 
+    function triggerXpGain(amount, userId = null) {
+      playAudioTone('xp');
+      const container = document.getElementById('xp-floating-container');
+      if (container) {
+        const badge = document.createElement('div');
+        badge.className = 'animate-float-xp bg-amber-400 text-slate-950 font-black text-xs px-3 py-1 rounded-full shadow-xl border border-amber-300 flex items-center gap-1';
+        badge.innerHTML = `<i class="fa-solid fa-bolt text-[10px]"></i> +${amount} XP!`;
+        container.appendChild(badge);
+        setTimeout(() => badge.remove(), 1700);
+      }
+    }
+
     function updateSyncIndicator() {
       const badge = document.getElementById('sync-badge');
       const text = document.getElementById('sync-status-text');
@@ -871,44 +830,50 @@
         badge.className = "px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer";
         text.innerText = "Live Synchroon";
         if (circle) circle.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse";
-        if (title) title.innerText = "Firestore Realtime Verbonden";
-        if (desc) desc.innerText = "Project: brainstormfow (Wijzigingen zijn direct overal zichtbaar)";
+        if (title) title.innerText = "Firebase Realtime Verbonden";
+        if (desc) desc.innerText = "Project: brainstormfow (Wijzigingen zijn overal realtime zichtbaar)";
       } else {
         badge.className = "px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer";
         text.innerText = "Lokaal Actief";
         if (circle) circle.className = "w-3 h-3 rounded-full bg-amber-500";
-        if (title) title.innerText = "In-Memory Fallback";
-        if (desc) desc.innerText = "Lokaal actief. Realtime sync schakelt automatisch in zodra Firestore bereikbaar is.";
+        if (title) title.innerText = "In-Memory Modus";
+        if (desc) desc.innerText = "Lokaal actief. Firebase verbindt automatisch online.";
       }
     }
 
+    /* Firebase Firestore Realtime Connection */
     async function initFirebaseCloud() {
       try {
         const app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
 
-        // Anoniem inloggen voor probleemloze deelname
         await signInAnonymously(auth);
 
-        // Eenvoudig, robuust documentpad in Firestore
         const boardDocRef = doc(db, 'fow_board', 'state');
 
-        // Luister realtime naar alle updates van collega's
         onSnapshot(boardDocRef, (snap) => {
           if (snap.exists()) {
             const remoteData = snap.data();
             if (remoteData && remoteData.pillars) {
               const currentActiveUser = state.activeUser;
+              const currentPillarIndex = state.activePillarIndex;
+
               state = remoteData;
-              // Behoud lokaal profiel indien gewenst
-              if (currentActiveUser && state.participants.some(p => p.id === currentActiveUser)) {
-                state.activeUser = currentActiveUser;
+
+              // Retain local active selection
+              if (currentActiveUser) state.activeUser = currentActiveUser;
+              if (typeof currentPillarIndex === 'number') state.activePillarIndex = currentPillarIndex;
+
+              // Clean up test entries like 'Roel koens' if lingering from previous tests
+              if (state.participants && state.participants.some(p => p.name.toLowerCase().includes('roel koens'))) {
+                state.participants = state.participants.filter(p => !p.name.toLowerCase().includes('roel koens'));
+                pushStateToCloud();
               }
+
               refreshAllViews();
             }
           } else {
-            // Eerste opzet van de sessie
             pushStateToCloud();
           }
           isCloudSyncActive = true;
@@ -920,7 +885,7 @@
         });
 
       } catch (err) {
-        console.warn("Firebase startup melding:", err);
+        console.warn("Firebase startup info:", err);
         isCloudSyncActive = false;
         updateSyncIndicator();
       }
@@ -932,23 +897,30 @@
         const boardDocRef = doc(db, 'fow_board', 'state');
         await setDoc(boardDocRef, state);
       } catch (e) {
-        console.warn("Fout bij synchroniseren naar cloud:", e);
+        console.warn("Cloud push notice:", e);
       }
     }
 
+    /* XP Calculation Engine */
     function calculateUserXP(userId) {
+      if (!userId) return 0;
       let totalXP = 0;
-      // 1. Post-its (+10 XP)
+      
+      // 1. Post-its (+20 XP)
       const userNotes = state.notes.filter(n => n.authorId === userId);
-      totalXP += (userNotes.length * 10);
+      totalXP += (userNotes.length * 20);
 
-      // 2. Votes uitgebracht (+5 XP)
+      // 2. Votes Given (+10 XP)
       if (state.userVotes && state.userVotes[userId]) {
         const votesGiven = Object.keys(state.userVotes[userId]).length;
-        totalXP += (votesGiven * 5);
+        totalXP += (votesGiven * 10);
       }
 
-      // 3. Quests geclaimd (+50 XP)
+      // 3. Quests Created (+25 XP)
+      const questsCreated = state.quests.filter(q => q.createdById === userId);
+      totalXP += (questsCreated.length * 25);
+
+      // 4. Quests Claimed (+50 XP)
       const userQuests = state.quests.filter(q => q.assignedTo === userId);
       totalXP += (userQuests.length * 50);
 
@@ -956,165 +928,126 @@
     }
 
     function updateActiveUserHeader() {
-      const activeUser = state.participants.find(p => p.id === state.activeUser) || state.participants[0];
+      const activeUser = state.participants.find(p => p.id === state.activeUser);
       const nameEl = document.getElementById('header-user-name');
       const xpEl = document.getElementById('header-user-xp');
-      const lvlBadgeEl = document.getElementById('header-user-level-badge');
-      const lvlTitleEl = document.getElementById('header-user-level-title');
-      const lvlBarEl = document.getElementById('header-user-level-bar');
-      const avatarEl = document.getElementById('header-user-avatar');
+      const badgeEl = document.getElementById('header-user-level-badge');
       
       if (activeUser) {
         const xp = calculateUserXP(activeUser.id);
-        const lvlInfo = getLevelInfo(xp);
-
+        const levelInfo = getFoWLevel(xp);
         if (nameEl) nameEl.innerText = activeUser.name;
-        if (xpEl) xpEl.innerText = `${xp} XP`;
-        if (lvlBadgeEl) lvlBadgeEl.innerText = `Lvl ${lvlInfo.lvl}`;
-        if (lvlTitleEl) lvlTitleEl.innerText = `${lvlInfo.icon} ${lvlInfo.title}`;
-        if (lvlBarEl) lvlBarEl.style.width = `${lvlInfo.progress}%`;
-        if (avatarEl) avatarEl.innerText = activeUser.name.charAt(0).toUpperCase();
+        if (xpEl) xpEl.innerHTML = `<i class="fa-solid fa-bolt text-[8px]"></i> ${xp} XP`;
+        if (badgeEl) {
+          badgeEl.innerText = `Lvl ${levelInfo.level}: ${levelInfo.title}`;
+          badgeEl.className = `text-[9px] font-extrabold px-1.5 py-0.5 rounded ${levelInfo.color} border border-current/20`;
+        }
+      } else {
+        if (nameEl) nameEl.innerText = "Meld je aan";
+        if (xpEl) xpEl.innerHTML = `<i class="fa-solid fa-bolt text-[8px]"></i> 0 XP`;
+        if (badgeEl) {
+          badgeEl.innerText = "Lvl 1";
+          badgeEl.className = "text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400";
+        }
       }
     }
 
-    window.prevPillar = function() {
-      if (currentPillarIndex > 0) {
-        currentPillarIndex--;
-        renderPillars();
-      }
-    };
+    /* Render Pillar Page Tabs and Current Active Pillar */
+    function renderCurrentPillarPage() {
+      if (!state.pillars || state.pillars.length === 0) return;
 
-    window.nextPillar = function() {
-      if (currentPillarIndex < state.pillars.length - 1) {
-        currentPillarIndex++;
-        renderPillars();
-      }
-    };
-
-    window.setPillarIndex = function(index) {
-      if (index >= 0 && index < state.pillars.length) {
-        currentPillarIndex = index;
-        renderPillars();
-      }
-    };
-
-    function renderPillars() {
-      const container = document.getElementById('active-pillar-page-container');
-      const tabsContainer = document.getElementById('pillar-tabs-container');
-      const counterEl = document.getElementById('pillar-page-counter');
-
-      if (!container || state.pillars.length === 0) return;
-
-      // Bewaak array bounds
-      if (currentPillarIndex >= state.pillars.length) {
-        currentPillarIndex = Math.max(0, state.pillars.length - 1);
+      if (state.activePillarIndex >= state.pillars.length) {
+        state.activePillarIndex = 0;
       }
 
-      const activePillar = state.pillars[currentPillarIndex];
+      const activePillar = state.pillars[state.activePillarIndex];
 
-      if (counterEl) {
-        counterEl.innerText = `Bladzijde ${currentPillarIndex + 1} van ${state.pillars.length}`;
+      // Update header titles
+      const titleEl = document.getElementById('active-pillar-title');
+      const taglineEl = document.getElementById('active-pillar-tagline');
+      const badgeEl = document.getElementById('active-pillar-badge');
+
+      if (titleEl) {
+        titleEl.innerHTML = `
+          <span>${activePillar.name}</span>
+          ${activePillar.isClosed ? '<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">✓ Afgerond</span>' : ''}
+        `;
       }
+      if (taglineEl) taglineEl.innerText = activePillar.tagline || '';
+      if (badgeEl) badgeEl.innerText = `Pilaar ${state.activePillarIndex + 1} van ${state.pillars.length}`;
 
-      // 1. Render Bladzijde Tab Knoppen
+      // Render page tabs ("bladzijdes")
+      const tabsContainer = document.getElementById('pillar-page-tabs');
       if (tabsContainer) {
         tabsContainer.innerHTML = '';
-        state.pillars.forEach((p, idx) => {
-          const isActive = idx === currentPillarIndex;
-          const btn = document.createElement('button');
-          btn.onclick = () => setPillarIndex(idx);
-          btn.className = `px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-            isActive 
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
-              : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800'
+        state.pillars.forEach((pillar, idx) => {
+          const isActive = idx === state.activePillarIndex;
+          const tabBtn = document.createElement('button');
+          tabBtn.onclick = () => selectPillarPage(idx);
+          tabBtn.className = `px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+            isActive ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
           }`;
-          btn.innerHTML = `
-            <span class="text-[10px] opacity-70">${idx + 1}.</span>
-            <span>${p.name}</span>
+          tabBtn.innerHTML = `
+            <span>${idx + 1}. ${pillar.name}</span>
+            ${pillar.isClosed ? '<i class="fa-solid fa-check text-[9px] text-emerald-400"></i>' : ''}
           `;
-          tabsContainer.appendChild(btn);
+          tabsContainer.appendChild(tabBtn);
         });
       }
 
-      // 2. Render de Actieve Bladzijde Card
-      container.innerHTML = '';
+      // Update synthesis textarea & status
+      const synthesisInput = document.getElementById('pillar-synthesis-input');
+      const synthesisStatus = document.getElementById('synthesis-status-badge');
+      if (synthesisInput) synthesisInput.value = activePillar.synthesis || '';
+      if (synthesisStatus) {
+        synthesisStatus.innerText = activePillar.isClosed ? "✓ Deze pilaar is geclosed" : "In bewerking";
+        synthesisStatus.className = activePillar.isClosed ? "text-[10px] text-emerald-400 font-bold" : "text-[10px] text-slate-400 font-medium";
+      }
 
-      const pageCard = document.createElement('div');
-      pageCard.className = `bg-slate-900/80 border ${activePillar.borderCol || 'border-slate-800'} rounded-3xl p-5 shadow-2xl flex flex-col space-y-5`;
+      // 4 Columns: 1. Betekenis, 2. Wel, 3. Niet, 4. Toekomst
+      const grid = document.getElementById('pillar-columns-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
 
-      let deleteBtnHtml = activePillar.isCustom ? `
-        <button onclick="deletePillar('${activePillar.id}')" class="text-slate-500 hover:text-red-400 p-1 text-xs" title="Pilaar verwijderen">
-          <i class="fa-solid fa-trash-can"></i>
-        </button>
-      ` : '';
-
-      pageCard.innerHTML = `
-        <div class="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-slate-800">
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${activePillar.badgeBg || 'bg-indigo-500/10'} ${activePillar.badgeText || 'text-indigo-400'} border border-current/20">
-                Bladzijde ${currentPillarIndex + 1} • Pilaar
-              </span>
-            </div>
-            <h3 class="text-2xl font-black text-white">${activePillar.name}</h3>
-            <p class="text-xs text-slate-400 mt-1">${activePillar.tagline || 'Geen toelichting'}</p>
-          </div>
-
-          <div class="flex items-center gap-2">
-            ${deleteBtnHtml}
-            <button onclick="openAddNoteModal('${activePillar.id}')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all">
-              <i class="fa-solid fa-plus"></i>
-              <span>+ Post-It op deze Bladzijde</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 4 Workshop Kolommen per Thema (Betekenis, Wel, Niet, Toekomst) -->
-        <div id="pillar-topics-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-        </div>
-      `;
-
-      container.appendChild(pageCard);
-
-      // 3. Vul de 4 kolommen (Betekenis, Wel, Niet, Toekomst)
-      const topicsGrid = pageCard.querySelector('#pillar-topics-grid');
-      const topics = [
-        { key: 'meaning', title: '1. Betekenis', subtitle: 'Wat betekent dit voor ons?', badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-        { key: 'wel', title: '2. Wat doen we WÉL?', subtitle: 'Onderwerpen & waarde', badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-        { key: 'niet', title: '3. Wat doen we NIET?', subtitle: 'Grenzen & uitsluitingen', badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/30' },
-        { key: 'moonshot', title: '4. Toekomst', subtitle: 'Visie, doorkijk & perspectief', badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30' }
+      const columnsDef = [
+        { key: 'meaning', title: '1. Betekenis', subtitle: 'Wat betekent dit voor ons?', color: 'blue' },
+        { key: 'wel', title: '2. Wat doen we WÉL?', subtitle: 'Onderwerpen & waarde', color: 'emerald' },
+        { key: 'niet', title: '3. Wat doen we NIET?', subtitle: 'Grenzen & uitsluitingen', color: 'rose' },
+        { key: 'toekomst', title: '4. Toekomst', subtitle: 'Visie, moonshot & horizon', color: 'purple' }
       ];
 
-      topics.forEach(topic => {
-        const topicCol = document.createElement('div');
-        topicCol.className = 'bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 flex flex-col min-h-[380px] space-y-3';
+      columnsDef.forEach(col => {
+        const colCard = document.createElement('div');
+        colCard.className = 'flex flex-col bg-slate-900/80 rounded-2xl border border-slate-800/90 overflow-hidden shadow-lg min-h-[380px]';
 
-        const categoryNotes = state.notes.filter(n => n.pillarId === activePillar.id && n.category === topic.key);
-
-        topicCol.innerHTML = `
-          <div class="pb-2 border-b border-slate-800">
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${topic.badgeClass}">
-              ${topic.title}
-            </span>
-            <div class="text-[11px] text-slate-400 mt-1 font-medium leading-tight">${topic.subtitle}</div>
-            <div class="text-[10px] text-slate-500 mt-0.5">${categoryNotes.length} post-its</div>
+        // Column Header
+        const colHeader = document.createElement('div');
+        colHeader.className = 'p-3.5 border-b border-slate-800 bg-slate-950/40 flex items-center justify-between';
+        colHeader.innerHTML = `
+          <div>
+            <h4 class="text-xs font-bold text-white">${col.title}</h4>
+            <p class="text-[10px] text-slate-400">${col.subtitle}</p>
           </div>
-
-          <div class="flex-1 space-y-2.5 overflow-y-auto max-h-[500px] notes-list-container">
-          </div>
-
-          <button onclick="openAddNoteModal('${activePillar.id}', '${topic.key}')" class="w-full py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-[11px] font-semibold flex items-center justify-center gap-1 border border-slate-800 transition-all">
-            <i class="fa-solid fa-plus text-[10px]"></i>
-            <span>Plak Post-it</span>
+          <button onclick="openAddNoteModal('${activePillar.id}', '${col.key}')" class="p-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-bold border border-slate-700 transition-all" title="Plak post-it in deze kolom">
+            <i class="fa-solid fa-plus text-indigo-400 mr-1"></i>+ Plak
           </button>
         `;
+        colCard.appendChild(colHeader);
 
-        const notesList = topicCol.querySelector('.notes-list-container');
+        // Notes Container
+        const notesContainer = document.createElement('div');
+        notesContainer.className = 'p-3 flex-1 flex flex-col space-y-2.5 overflow-y-auto max-h-[500px]';
+
+        const categoryNotes = state.notes.filter(n => n.pillarId === activePillar.id && n.category === col.key);
 
         if (categoryNotes.length === 0) {
-          notesList.innerHTML = `
-            <div class="h-28 flex flex-col items-center justify-center text-center p-3 text-slate-600 border border-dashed border-slate-800/80 rounded-xl">
-              <span class="text-[11px]">Nog leeg</span>
+          notesContainer.innerHTML = `
+            <div class="flex-1 flex flex-col items-center justify-center text-center p-4 text-slate-600 border border-dashed border-slate-800/80 rounded-xl">
+              <i class="fa-regular fa-note-sticky text-xl mb-1.5 opacity-60"></i>
+              <p class="text-[11px]">Nog geen inbreng.</p>
+              <button onclick="openAddNoteModal('${activePillar.id}', '${col.key}')" class="mt-1.5 text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline">
+                + Plak post-it (+20 XP)
+              </button>
             </div>
           `;
         } else {
@@ -1122,50 +1055,70 @@
             const hasVoted = state.userVotes[state.activeUser] && state.userVotes[state.activeUser][note.id];
             const voteBtnClass = hasVoted 
               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
-              : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800';
+              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700';
 
-            const card = document.createElement('div');
-            card.className = `sticky-card p-3 rounded-xl bg-slate-900 border border-slate-800 shadow-md flex flex-col justify-between space-y-2`;
-            card.innerHTML = `
+            const noteCard = document.createElement('div');
+            noteCard.className = 'sticky-card p-3 rounded-xl bg-slate-950/90 border border-slate-800/90 shadow flex flex-col justify-between space-y-2.5';
+            noteCard.innerHTML = `
               <div>
-                <div class="flex items-center justify-between gap-1 mb-1">
-                  <span class="text-[10px] font-semibold text-slate-400 truncate max-w-[140px]">
-                    <i class="fa-solid fa-user-circle text-[9px] mr-1 text-slate-500"></i>${note.authorName || 'Anoniem'}
-                  </span>
+                <div class="flex items-center justify-end gap-1 mb-1">
                   <button onclick="deleteNote('${note.id}')" class="text-slate-600 hover:text-red-400 p-0.5 text-xs transition-colors" title="Verwijderen">
                     <i class="fa-solid fa-xmark"></i>
                   </button>
                 </div>
-                <p class="text-xs text-slate-100 leading-snug whitespace-pre-wrap">${note.content}</p>
+                <p class="text-xs text-slate-200 leading-snug whitespace-pre-wrap">${note.content}</p>
               </div>
 
-              <div class="flex items-center justify-between pt-1 border-t border-slate-800/60 text-[10px]">
-                <span class="text-slate-500">${new Date(note.createdAt || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                <button onclick="castVote('${note.id}')" class="px-2 py-0.5 rounded-lg ${voteBtnClass} flex items-center gap-1 font-bold transition-transform active:scale-95" title="Stem op deze post-it (+5 XP voor jou)">
+              <div class="flex items-center justify-between pt-1.5 border-t border-slate-800/80 text-[10px]">
+                <span class="text-slate-400 font-medium truncate max-w-[110px]">
+                  <i class="fa-solid fa-user-circle text-[9px] mr-1 text-slate-500"></i>${note.authorName || 'Anoniem'}
+                </span>
+                
+                <button onclick="castVote('${note.id}')" class="px-2 py-0.5 rounded-lg ${voteBtnClass} flex items-center gap-1 font-bold transition-transform active:scale-95" title="Stem op deze post-it (+10 XP voor jou)">
                   <i class="fa-solid fa-thumbs-up text-[9px]"></i>
                   <span>${note.votes || 0}</span>
                 </button>
               </div>
             `;
-            notesList.appendChild(card);
+            notesContainer.appendChild(noteCard);
           });
         }
 
-        topicsGrid.appendChild(topicCol);
+        colCard.appendChild(notesContainer);
+        grid.appendChild(colCard);
       });
     }
 
+    /* Render Participants View */
     function renderParticipants() {
       const container = document.getElementById('participants-cards-container');
+      const countEl = document.getElementById('count-participants');
+      if (countEl) countEl.innerText = state.participants.length;
       if (!container) return;
 
       container.innerHTML = '';
 
+      if (state.participants.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 px-4 flex flex-col items-center justify-center text-center bg-slate-900/40 rounded-3xl border border-dashed border-slate-800">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center text-2xl mb-3">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <h3 class="text-base font-extrabold text-white">Nog geen deelnemers aangemeld</h3>
+            <p class="text-xs text-slate-400 mt-1 max-w-sm">Meld jezelf of je collega's aan met hun naam om direct mee te doen en XP te verzamelen.</p>
+            <button onclick="openParticipantModal()" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg">
+              + Eerste Deelnemer Aanmelden
+            </button>
+          </div>
+        `;
+        return;
+      }
+
       state.participants.forEach(participant => {
-        const pillar = state.pillars.find(p => p.id === participant.pillarId);
         const userXP = calculateUserXP(participant.id);
-        const lvlInfo = getLevelInfo(userXP);
+        const levelInfo = getFoWLevel(userXP);
         const isActive = participant.id === state.activeUser;
+        const pillar = state.pillars.find(p => p.id === participant.pillarId);
 
         const card = document.createElement('div');
         card.className = `p-5 rounded-2xl bg-slate-900/80 border ${isActive ? 'border-indigo-500 shadow-indigo-500/10' : 'border-slate-800'} shadow-lg flex flex-col justify-between space-y-4`;
@@ -1173,21 +1126,18 @@
         card.innerHTML = `
           <div class="flex items-start justify-between">
             <div class="flex items-center space-x-3">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white font-bold text-lg shadow">
-                ${participant.name.charAt(0)}
+              <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-base shadow">
+                ${participant.name.charAt(0).toUpperCase()}
               </div>
               <div>
-                <h4 class="text-sm font-bold text-white flex items-center gap-1.5 flex-wrap">
+                <h4 class="text-sm font-bold text-white flex items-center gap-2">
                   <span>${participant.name}</span>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-extrabold">
-                    Lvl ${lvlInfo.lvl}
-                  </span>
-                  ${isActive ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Jij bent dit</span>' : ''}
+                  ${isActive ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Jij</span>' : ''}
                 </h4>
-                <p class="text-xs text-slate-400 mt-0.5">${participant.role || 'Consultant'}</p>
-                <div class="text-[11px] font-bold text-indigo-300 mt-0.5 flex items-center gap-1">
-                  <span>${lvlInfo.icon}</span>
-                  <span>${lvlInfo.title}</span>
+                <div class="mt-0.5">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${levelInfo.color} border border-current/20">
+                    Lvl ${levelInfo.level}: ${levelInfo.title}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1197,32 +1147,20 @@
             </button>
           </div>
 
-          <div class="space-y-2.5 text-xs">
-            <!-- Level Progression Bar -->
-            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
-              <div class="flex items-center justify-between text-[10px]">
-                <span class="text-slate-400">Voortgang naar Lvl ${lvlInfo.lvl < 20 ? lvlInfo.lvl + 1 : 20}:</span>
-                <span class="font-bold text-amber-300">${lvlInfo.isMax ? 'MAX LEVEL' : `${userXP} / ${lvlInfo.nextXp} XP`}</span>
-              </div>
-              <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-400 h-1.5 rounded-full transition-all" style="width: ${lvlInfo.progress}%"></div>
-              </div>
-            </div>
-
+          <div class="space-y-2 text-xs">
             <div class="flex items-center justify-between text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800">
               <span>Focus Pilaar:</span>
-              <span class="font-bold text-slate-200">${pillar ? pillar.name : 'Niet toegewezen'}</span>
+              <span class="font-bold text-slate-200">${pillar ? pillar.name : 'Vrij / Algemeen'}</span>
             </div>
             <div class="flex items-center justify-between text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800">
-              <span>Totaal Score:</span>
+              <span>Totaal XP:</span>
               <span class="font-black text-amber-400 flex items-center gap-1">
-                <i class="fa-solid fa-bolt text-[10px]"></i>
-                ${userXP} XP
+                <i class="fa-solid fa-bolt text-[10px]"></i> ${userXP} XP
               </span>
             </div>
           </div>
 
-          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+          <div class="pt-2 border-t border-slate-800">
             <button onclick="setActiveUser('${participant.id}')" class="w-full py-2 rounded-xl text-xs font-bold transition-all ${isActive ? 'bg-indigo-600/30 text-indigo-300 cursor-default' : 'bg-slate-800 hover:bg-slate-700 text-white'}">
               ${isActive ? '✓ Huidig Actief Profiel' : 'Selecteer als Jouw Profiel'}
             </button>
@@ -1232,12 +1170,12 @@
       });
     }
 
+    /* Render Overview, Quests & Leaderboard */
     function renderOverview() {
-      // 1. Stat Summary counters
+      // 1. Stats
       const totalNotes = state.notes.length;
       let totalVotes = 0;
       state.notes.forEach(n => { totalVotes += (n.votes || 0); });
-
       let totalXPAll = 0;
       state.participants.forEach(p => { totalXPAll += calculateUserXP(p.id); });
 
@@ -1248,7 +1186,7 @@
       if (statVotesEl) statVotesEl.innerText = totalVotes;
       if (statXpEl) statXpEl.innerText = totalXPAll;
 
-      // 2. Render Team Quests (strakke titels zonder subbeschrijvingen)
+      // 2. Render Team Quests
       const questsContainer = document.getElementById('quests-container');
       if (questsContainer) {
         questsContainer.innerHTML = '';
@@ -1257,28 +1195,28 @@
           const isAssigned = !!assignedUser;
 
           const questCard = document.createElement('div');
-          questCard.className = `p-3.5 rounded-2xl bg-slate-950 border ${isAssigned ? 'border-amber-500/40 bg-amber-500/5' : 'border-slate-800'} flex items-center justify-between gap-3`;
+          questCard.className = `p-3.5 rounded-xl bg-slate-950 border ${isAssigned ? 'border-amber-500/40 bg-amber-500/5' : 'border-slate-800'} flex items-center justify-between gap-3`;
 
-          let optionsHtml = `<option value="">-- Wijs toe --</option>`;
+          let optionsHtml = `<option value="">-- Vrijgeven / Wijs toe --</option>`;
           state.participants.forEach(p => {
             optionsHtml += `<option value="${p.id}" ${quest.assignedTo === p.id ? 'selected' : ''}>${p.name}</option>`;
           });
 
           questCard.innerHTML = `
-            <div class="flex items-center gap-2.5 flex-1 min-w-0">
-              <span class="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                +50 XP
-              </span>
-              <h4 class="text-xs font-bold text-white truncate">${quest.title}</h4>
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-white">${quest.title}</span>
+                <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">+50 XP</span>
+              </div>
             </div>
 
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex items-center gap-2">
               <select onchange="assignQuest('${quest.id}', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-200">
                 ${optionsHtml}
               </select>
 
               ${!isAssigned ? `
-                <button onclick="claimQuest('${quest.id}')" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] transition-all">
+                <button onclick="claimQuest('${quest.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] transition-all">
                   Claim
                 </button>
               ` : `
@@ -1318,20 +1256,19 @@
         });
       }
 
-      // 4. Render Leaderboard Ranglijst
+      // 4. Leaderboard Ranking
       const tableBody = document.getElementById('leaderboard-table-body');
       if (tableBody) {
         tableBody.innerHTML = '';
-        // Sorteer deelnemers op XP
         const sorted = [...state.participants].sort((a, b) => calculateUserXP(b.id) - calculateUserXP(a.id));
 
         sorted.forEach((participant, index) => {
-          const pillar = state.pillars.find(p => p.id === participant.pillarId);
           const notesCount = state.notes.filter(n => n.authorId === participant.id).length;
           const votesGiven = state.userVotes[participant.id] ? Object.keys(state.userVotes[participant.id]).length : 0;
+          const questsCreated = state.quests.filter(q => q.createdById === participant.id).length;
           const questsClaimed = state.quests.filter(q => q.assignedTo === participant.id).length;
           const totalXP = calculateUserXP(participant.id);
-          const lvlInfo = getLevelInfo(totalXP);
+          const levelInfo = getFoWLevel(totalXP);
 
           let medal = `<span class="text-slate-500 font-bold">#${index + 1}</span>`;
           if (index === 0) medal = `<span class="text-amber-400 font-black text-sm">🥇 #1</span>`;
@@ -1347,16 +1284,14 @@
               ${participant.id === state.activeUser ? '<span class="ml-1 text-[9px] text-indigo-400 font-normal">(jij)</span>' : ''}
             </td>
             <td class="py-3 px-3">
-              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-semibold text-[11px]">
-                <span>${lvlInfo.icon}</span>
-                <span class="font-extrabold text-amber-300">Lvl ${lvlInfo.lvl}</span>
-                <span class="text-slate-300">· ${lvlInfo.title}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${levelInfo.color} border border-current/20">
+                Lvl ${levelInfo.level}: ${levelInfo.title}
               </span>
             </td>
-            <td class="py-3 px-3 text-slate-400">${pillar ? pillar.name : '—'}</td>
-            <td class="py-3 px-2 text-center text-indigo-300">${notesCount}</td>
-            <td class="py-3 px-2 text-center text-emerald-300">${votesGiven}</td>
-            <td class="py-3 px-2 text-center text-amber-300">${questsClaimed}</td>
+            <td class="py-3 px-2 text-center text-indigo-300 font-semibold">${notesCount}</td>
+            <td class="py-3 px-2 text-center text-emerald-300 font-semibold">${votesGiven}</td>
+            <td class="py-3 px-2 text-center text-violet-300 font-semibold">${questsCreated}</td>
+            <td class="py-3 px-2 text-center text-amber-300 font-semibold">${questsClaimed}</td>
             <td class="py-3 px-3 text-right font-black text-amber-400 text-sm">${totalXP} XP</td>
           `;
           tableBody.appendChild(tr);
@@ -1366,12 +1301,12 @@
 
     function refreshAllViews() {
       updateActiveUserHeader();
-      renderPillars();
+      renderCurrentPillarPage();
       renderParticipants();
       renderOverview();
     }
 
-    // Tab Switcher
+    /* Tab Switcher */
     window.switchTab = function(tabId) {
       const tabs = ['pillars', 'participants', 'overview'];
       tabs.forEach(t => {
@@ -1389,29 +1324,49 @@
       refreshAllViews();
     };
 
-    // Modal Helpers: Notes
-    window.openAddNoteModal = function(preferredPillarId = null, preferredCategory = null) {
-      const selectPillar = document.getElementById('modal-note-pillar');
-      if (selectPillar) {
-        selectPillar.innerHTML = '';
+    /* Pillar Pages ("Bladzijdes") Navigation */
+    window.selectPillarPage = function(index) {
+      state.activePillarIndex = index;
+      renderCurrentPillarPage();
+    };
+
+    window.prevPillarPage = function() {
+      if (state.activePillarIndex > 0) {
+        state.activePillarIndex--;
+        renderCurrentPillarPage();
+      }
+    };
+
+    window.nextPillarPage = function() {
+      if (state.activePillarIndex < state.pillars.length - 1) {
+        state.activePillarIndex++;
+        renderCurrentPillarPage();
+      }
+    };
+
+    /* Modals & Handlers */
+    window.openAddNoteModal = function(preferredPillarId = null, preferredCategory = 'meaning') {
+      const select = document.getElementById('modal-note-pillar');
+      if (select) {
+        select.innerHTML = '';
         state.pillars.forEach(p => {
           const opt = document.createElement('option');
           opt.value = p.id;
           opt.innerText = p.name;
           if (preferredPillarId && p.id === preferredPillarId) opt.selected = true;
-          selectPillar.appendChild(opt);
+          select.appendChild(opt);
         });
       }
 
-      const selectCategory = document.getElementById('modal-note-category');
-      if (selectCategory && preferredCategory) {
-        selectCategory.value = preferredCategory;
+      const catSelect = document.getElementById('modal-note-category');
+      if (catSelect && preferredCategory) {
+        catSelect.value = preferredCategory;
       }
 
       const activeUser = state.participants.find(p => p.id === state.activeUser);
       const authorPreview = document.getElementById('modal-note-author-preview');
       if (authorPreview) {
-        authorPreview.innerText = activeUser ? activeUser.name : 'Anoniem';
+        authorPreview.innerText = activeUser ? activeUser.name : 'Nog niet aangemeld';
       }
 
       const contentInput = document.getElementById('modal-note-content');
@@ -1434,7 +1389,13 @@
         return;
       }
 
-      const activeUser = state.participants.find(p => p.id === state.activeUser) || state.participants[0];
+      if (!state.activeUser) {
+        openParticipantModal();
+        showToast('Meld je eerst aan om post-its te kunnen plaatsen.', 'fa-user');
+        return;
+      }
+
+      const activeUser = state.participants.find(p => p.id === state.activeUser);
 
       const newNote = {
         id: 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
@@ -1451,8 +1412,8 @@
       closeNoteModal();
       pushStateToCloud();
       refreshAllViews();
-      triggerXpGain(10, 'Post-it geplaatst');
-      showToast(`Post-it geplaatst! +10 XP voor ${activeUser.name}`, 'fa-bolt');
+      triggerXpGain(20, activeUser.id);
+      showToast(`Post-it geplaatst! +20 XP toegekend aan ${activeUser.name}`, 'fa-bolt');
     };
 
     window.deleteNote = function(noteId) {
@@ -1463,6 +1424,12 @@
     };
 
     window.castVote = function(noteId) {
+      if (!state.activeUser) {
+        openParticipantModal();
+        showToast('Meld je eerst aan om te kunnen stemmen (+10 XP).', 'fa-user');
+        return;
+      }
+
       if (!state.userVotes) state.userVotes = {};
       if (!state.userVotes[state.activeUser]) state.userVotes[state.activeUser] = {};
 
@@ -1471,23 +1438,21 @@
       if (!targetNote) return;
 
       if (hasVoted) {
-        // Stem intrekken
         delete state.userVotes[state.activeUser][noteId];
         targetNote.votes = Math.max(0, (targetNote.votes || 1) - 1);
-        showToast('Stem ingetrokken (-5 XP)');
+        showToast('Stem ingetrokken (-10 XP)');
       } else {
-        // Stem toekennen
         state.userVotes[state.activeUser][noteId] = true;
         targetNote.votes = (targetNote.votes || 0) + 1;
-        triggerXpGain(5, 'Stem uitgebracht');
-        showToast('Stem uitgebracht! +5 XP verdiend', 'fa-thumbs-up');
+        triggerXpGain(10, state.activeUser);
+        showToast('Stem uitgebracht! +10 XP verdiend', 'fa-thumbs-up');
       }
 
       pushStateToCloud();
       refreshAllViews();
     };
 
-    // Modal Helpers: Pillars
+    /* Dynamic Pillars */
     window.openAddPillarModal = function() {
       document.getElementById('modal-pillar-name').value = '';
       document.getElementById('modal-pillar-tagline').value = '';
@@ -1504,63 +1469,37 @@
       const color = document.getElementById('modal-pillar-color')?.value || 'violet';
 
       if (!name) {
-        showToast('Vul ten minste de naam van de pilaar in.', 'fa-triangle-exclamation');
+        showToast('Vul de naam van de pilaar in.', 'fa-triangle-exclamation');
         return;
       }
 
       const newId = 'pillar-' + Date.now();
-      const colorStyles = {
-        violet: { badgeBg: 'bg-violet-500/10', badgeText: 'text-violet-400', borderCol: 'border-violet-500/30' },
-        teal: { badgeBg: 'bg-teal-500/10', badgeText: 'text-teal-400', borderCol: 'border-teal-500/30' },
-        cyan: { badgeBg: 'bg-cyan-500/10', badgeText: 'text-cyan-400', borderCol: 'border-cyan-500/30' },
-        rose: { badgeBg: 'bg-rose-500/10', badgeText: 'text-rose-400', borderCol: 'border-rose-500/30' },
-        amber: { badgeBg: 'bg-amber-500/10', badgeText: 'text-amber-400', borderCol: 'border-amber-500/30' }
-      }[color] || { badgeBg: 'bg-indigo-500/10', badgeText: 'text-indigo-400', borderCol: 'border-indigo-500/30' };
-
       state.pillars.push({
         id: newId,
         name: name,
-        tagline: tagline || 'Nieuwe domeinpilaar',
+        tagline: tagline || 'Nieuwe strategische pijler',
         color: color,
-        badgeBg: colorStyles.badgeBg,
-        badgeText: colorStyles.badgeText,
-        borderCol: colorStyles.borderCol,
+        badgeBg: 'bg-violet-500/10',
+        badgeText: 'text-violet-400',
+        borderCol: 'border-violet-500/30',
+        synthesis: '',
+        isClosed: false,
         isCustom: true
       });
 
+      state.activePillarIndex = state.pillars.length - 1;
       closeAddPillarModal();
-      currentPillarIndex = state.pillars.length - 1; // Ga direct naar de nieuwe bladzijde
       pushStateToCloud();
       refreshAllViews();
       showToast(`Pilaar '${name}' toegevoegd!`, 'fa-layer-group');
     };
 
-    window.deletePillar = function(pillarId) {
-      state.pillars = state.pillars.filter(p => p.id !== pillarId);
-      state.notes = state.notes.filter(n => n.pillarId !== pillarId);
-      if (currentPillarIndex >= state.pillars.length) {
-        currentPillarIndex = Math.max(0, state.pillars.length - 1);
-      }
-      pushStateToCloud();
-      refreshAllViews();
-      showToast('Pilaar verwijderd.', 'fa-trash-can');
-    };
-
-    // Modal Helpers: Participants
-    window.openAddParticipantModal = function() {
-      const select = document.getElementById('modal-participant-pillar');
-      if (select) {
-        select.innerHTML = '';
-        state.pillars.forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.innerText = p.name;
-          select.appendChild(opt);
-        });
-      }
-      document.getElementById('modal-participant-name').value = '';
-      document.getElementById('modal-participant-role').value = '';
+    /* Participant Handlers (Name Only) */
+    window.openParticipantModal = function() {
+      const input = document.getElementById('modal-participant-name');
+      if (input) input.value = '';
       document.getElementById('modal-participant')?.classList.remove('hidden');
+      setTimeout(() => input?.focus(), 50);
     };
 
     window.closeParticipantModal = function() {
@@ -1569,11 +1508,8 @@
 
     window.saveParticipant = function() {
       const name = document.getElementById('modal-participant-name')?.value?.trim();
-      const role = document.getElementById('modal-participant-role')?.value?.trim();
-      const pillarId = document.getElementById('modal-participant-pillar')?.value;
-
       if (!name) {
-        showToast('Vul ten minste de naam van de deelnemer in.', 'fa-triangle-exclamation');
+        showToast('Typ je naam in om mee te doen.', 'fa-triangle-exclamation');
         return;
       }
 
@@ -1581,9 +1517,7 @@
       const newParticipant = {
         id: newId,
         name: name,
-        role: role || 'Consultant Future of Work',
-        pillarId: pillarId || state.pillars[0].id,
-        xp: 0
+        pillarId: null
       };
 
       state.participants.push(newParticipant);
@@ -1592,73 +1526,92 @@
       closeParticipantModal();
       pushStateToCloud();
       refreshAllViews();
-      showToast(`Deelnemer '${name}' toegevoegd en geactiveerd!`, 'fa-user-check');
-    };
-
-    window.deleteParticipant = function(userId) {
-      if (state.participants.length <= 1) {
-        showToast('Er moet ten minste 1 deelnemer actief blijven.', 'fa-triangle-exclamation');
-        return;
-      }
-
-      state.participants = state.participants.filter(p => p.id !== userId);
-      if (state.activeUser === userId) {
-        state.activeUser = state.participants[0].id;
-      }
-
-      pushStateToCloud();
-      refreshAllViews();
-      showToast('Deelnemer verwijderd.', 'fa-trash-can');
+      showToast(`Welkom ${name}! Je profiel is actief.`, 'fa-user-check');
     };
 
     window.setActiveUser = function(userId) {
       state.activeUser = userId;
       const user = state.participants.find(p => p.id === userId);
-      pushStateToCloud();
-      refreshAllViews();
+      updateActiveUserHeader();
+      renderParticipants();
       showToast(`Profiel gewisseld naar: ${user ? user.name : 'Deelnemer'}`, 'fa-user-check');
     };
 
-    // Modal Helpers: Quests
+    window.deleteParticipant = function(userId) {
+      state.participants = state.participants.filter(p => p.id !== userId);
+      if (state.activeUser === userId) {
+        state.activeUser = state.participants.length > 0 ? state.participants[0].id : null;
+      }
+      pushStateToCloud();
+      refreshAllViews();
+      showToast('Deelnemer verwijderd.', 'fa-trash-can');
+    };
+
+    window.clearAllParticipants = function() {
+      state.participants = [];
+      state.activeUser = null;
+      state.quests.forEach(q => q.assignedTo = null);
+      pushStateToCloud();
+      refreshAllViews();
+      showToast('Alle deelnemers zijn gewist.', 'fa-broom');
+    };
+
+    /* Team Quests Handlers (+25 XP for creation, +50 XP for claim) */
     window.openAddQuestModal = function() {
-      document.getElementById('modal-quest-title').value = '';
-      document.getElementById('modal-add-quest')?.classList.remove('hidden');
+      const input = document.getElementById('modal-quest-title');
+      if (input) input.value = '';
+      document.getElementById('modal-quest')?.classList.remove('hidden');
+      setTimeout(() => input?.focus(), 50);
     };
 
     window.closeAddQuestModal = function() {
-      document.getElementById('modal-add-quest')?.classList.add('hidden');
+      document.getElementById('modal-quest')?.classList.add('hidden');
     };
 
     window.saveNewQuest = function() {
       const title = document.getElementById('modal-quest-title')?.value?.trim();
       if (!title) {
-        showToast('Vul een titel in voor de nieuwe taak.', 'fa-triangle-exclamation');
+        showToast('Vul een taaktitel in.', 'fa-triangle-exclamation');
         return;
       }
 
-      const newQuest = {
+      if (!state.activeUser) {
+        openParticipantModal();
+        showToast('Selecteer eerst jouw profiel om de quest toe te voegen.', 'fa-user');
+        return;
+      }
+
+      const activeUser = state.participants.find(p => p.id === state.activeUser);
+
+      state.quests.push({
         id: 'quest-' + Date.now(),
         title: title,
-        assignedTo: null,
-        xpReward: 50
-      };
+        createdById: state.activeUser,
+        assignedTo: null
+      });
 
-      state.quests.push(newQuest);
       closeAddQuestModal();
       pushStateToCloud();
       refreshAllViews();
-      showToast(`Nieuwe quest toegevoegd! (+50 XP)`, 'fa-bullseye');
+      triggerXpGain(25, state.activeUser);
+      showToast(`Nieuwe quest toegevoegd! +25 XP toegekend aan ${activeUser ? activeUser.name : 'jouw profiel'}.`, 'fa-bullseye');
     };
 
     window.claimQuest = function(questId) {
+      if (!state.activeUser) {
+        openParticipantModal();
+        showToast('Meld je eerst aan om een taak te claimen (+50 XP).', 'fa-user');
+        return;
+      }
+
       const quest = state.quests.find(q => q.id === questId);
       if (!quest) return;
 
       quest.assignedTo = state.activeUser;
       pushStateToCloud();
       refreshAllViews();
-      triggerXpGain(50, 'Quest geclaimd');
-      showToast(`Taak geclaimd! +50 XP verdiend voor jouw profiel.`, 'fa-award');
+      triggerXpGain(50, state.activeUser);
+      showToast(`Taak geclaimd! +50 XP verdiend!`, 'fa-award');
     };
 
     window.assignQuest = function(questId, userId) {
@@ -1670,24 +1623,77 @@
       refreshAllViews();
       if (userId) {
         const user = state.participants.find(p => p.id === userId);
-        if (userId === state.activeUser) {
-          triggerXpGain(50, 'Quest toegewezen');
-        }
         showToast(`Taak toegewezen aan ${user ? user.name : 'deelnemer'} (+50 XP).`, 'fa-award');
       } else {
         showToast('Taak vrijgegeven.', 'fa-rotate-left');
       }
     };
 
-    window.clearAllNotes = function() {
-      if (state.notes.length === 0) {
-        showToast('Bord is al leeg.', 'fa-info');
-        return;
+    /* Pillar Synthesis & Milestone Closeout */
+    window.savePillarSynthesis = function(val) {
+      const activePillar = state.pillars[state.activePillarIndex];
+      if (activePillar) {
+        activePillar.synthesis = val;
+        pushStateToCloud();
       }
-      state.notes = [];
+    };
+
+    window.closePillarWithCelebration = function() {
+      const activePillar = state.pillars[state.activePillarIndex];
+      if (!activePillar) return;
+
+      activePillar.isClosed = true;
       pushStateToCloud();
       refreshAllViews();
-      showToast('Alle post-its zijn gewist (blanco bord).', 'fa-broom');
+
+      // Audio Fanfare
+      playAudioTone('celebration');
+
+      // Confetti Explosion
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        setTimeout(() => {
+          confetti({
+            particleCount: 60,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 }
+          });
+          confetti({
+            particleCount: 60,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 }
+          });
+        }, 250);
+      }
+
+      // Populate Celebration Modal
+      const nameEl = document.getElementById('celebration-pillar-name');
+      const summaryEl = document.getElementById('celebration-summary-text');
+      const notesEl = document.getElementById('celebration-stat-notes');
+      const votesEl = document.getElementById('celebration-stat-votes');
+
+      const pillarNotes = state.notes.filter(n => n.pillarId === activePillar.id);
+      let pillarVotes = 0;
+      pillarNotes.forEach(n => { pillarVotes += (n.votes || 0); });
+
+      if (nameEl) nameEl.innerText = `${activePillar.name} Succesvol Afgerond! 🎉`;
+      if (summaryEl) {
+        summaryEl.innerText = activePillar.synthesis ? `"${activePillar.synthesis}"` : "Geen specifieke synthese ingevoerd.";
+      }
+      if (notesEl) notesEl.innerText = pillarNotes.length;
+      if (votesEl) votesEl.innerText = pillarVotes;
+
+      document.getElementById('modal-celebration')?.classList.remove('hidden');
+    };
+
+    window.closeCelebrationModal = function() {
+      document.getElementById('modal-celebration')?.classList.add('hidden');
     };
 
     window.openCloudModal = function() {
@@ -1698,21 +1704,18 @@
       document.getElementById('modal-cloud')?.classList.add('hidden');
     };
 
-    window.openParticipantModal = function() {
-      window.switchTab('participants');
-    };
-
-    // ESC toets sluit alle modals
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeNoteModal();
         closeAddPillarModal();
         closeParticipantModal();
         closeAddQuestModal();
+        closeCelebrationModal();
         closeCloudModal();
       }
     });
 
+    /* Application Startup */
     window.onload = function() {
       refreshAllViews();
       updateSyncIndicator();
