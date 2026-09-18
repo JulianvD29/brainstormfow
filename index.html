@@ -70,6 +70,16 @@
       animation: xpGain 0.6s ease-out;
     }
 
+    @keyframes floatUpFade {
+      0% { opacity: 0; transform: translateY(12px) scale(0.9); }
+      20% { opacity: 1; transform: translateY(0) scale(1.05); }
+      80% { opacity: 1; transform: translateY(-8px) scale(1); }
+      100% { opacity: 0; transform: translateY(-24px) scale(0.95); }
+    }
+    .animate-float-xp {
+      animation: floatUpFade 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
     /* Sticky note fold effect */
     .sticky-card {
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -163,11 +173,11 @@
           <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
             <span>Strategische Pilaren Brainstorm</span>
             <span class="text-xs font-medium px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
-              Open Brainstorm
+              Bladzijde per Pilaar
             </span>
           </h2>
           <p class="text-xs text-slate-400 mt-1">
-            Plak post-its onder de 5 kernvragen per pilaar. 
+            Behandel de pilaren stap voor stap. 
             <span class="text-amber-400 font-semibold">+10 XP</span> per post-it, 
             <span class="text-amber-400 font-semibold">+5 XP</span> per stem.
           </p>
@@ -188,8 +198,30 @@
         </div>
       </div>
 
-      <!-- Pillars Grid Container (Dynamisch gevuld via JavaScript) -->
-      <div id="pillars-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+      <!-- Pilaar Bladzijdes Navigatie Balk (Facilitator Stepper) -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800">
+        <div class="flex items-center gap-2">
+          <button onclick="prevPillar()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Vorige Pilaar</span>
+          </button>
+          <span id="pillar-page-indicator" class="text-xs font-bold text-slate-400 px-2">
+            Bladzijde 1 van 4
+          </span>
+          <button onclick="nextPillar()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all">
+            <span>Volgende Pilaar</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <!-- Directe Pilaar Knoppen / Bladzijde Tabs -->
+        <div id="pillar-page-tabs" class="flex items-center gap-1.5 flex-wrap">
+          <!-- Dynamisch gegenereerd -->
+        </div>
+      </div>
+
+      <!-- Active Pillar Page Container (Full-width workshop layout per pilaar) -->
+      <div id="pillars-container" class="w-full">
         <!-- Wordt live gegenereerd door renderPillars() -->
       </div>
     </div>
@@ -252,7 +284,7 @@
 
       <!-- Team Quests / Taken Sectie (+50 XP) -->
       <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
               <span class="text-amber-400"><i class="fa-solid fa-bullseye"></i></span>
@@ -262,9 +294,15 @@
               Claim een opdracht om direct <span class="text-amber-400 font-bold">+50 XP</span> te verdienen voor jouw profiel.
             </p>
           </div>
-          <span class="text-[11px] font-semibold bg-amber-500/10 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/30">
-            50 XP per taak
-          </span>
+          <div class="flex items-center gap-2">
+            <button onclick="openAddQuestModal()" class="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm">
+              <i class="fa-solid fa-plus text-[10px]"></i>
+              <span>+ Taak Toevoegen</span>
+            </button>
+            <span class="text-[11px] font-semibold bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">
+              50 XP per taak
+            </span>
+          </div>
         </div>
 
         <div id="quests-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -350,7 +388,7 @@
             <option value="wel">2. Wat doen we WÉL? (Onderwerpen & waarde)</option>
             <option value="niet">3. Wat doen we NIET? (Grenzen & uitsluitingen)</option>
             <option value="dilemma">4. Dilemma & Spanning (Lastige keuzes & offers)</option>
-            <option value="moonshot">5. 🚀 Toekomstvisie & Moonshot</option>
+            <option value="moonshot">5. Toekomst (Toekomstvisie & perspectief)</option>
           </select>
         </div>
 
@@ -408,14 +446,36 @@
           </select>
         </div>
 
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Uitdagende Toekomst- / Visievraag</label>
-          <textarea id="modal-pillar-vision" rows="2" placeholder="Welke radicale moonshot of spanning typeert deze pilaar richting 2030?" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
-        </div>
-
         <div class="flex justify-end gap-2 pt-2">
           <button onclick="closeAddPillarModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Annuleren</button>
           <button onclick="saveNewPillar()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg">Toevoegen aan Bord</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: NIEUWE TAAK / QUEST TOEVOEGEN -->
+  <div id="modal-quest" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-bullseye text-amber-400"></i>
+          <span>Nieuwe Team Taak Toevoegen</span>
+        </h3>
+        <button onclick="closeAddQuestModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Titel van de Taak / Opdracht</label>
+          <input type="text" id="modal-quest-title" placeholder="bijv. Klantcase uitwerken, Template reviewen..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeAddQuestModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800">Annuleren</button>
+          <button onclick="saveNewQuest()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-lg">Taak Toevoegen (+50 XP)</button>
         </div>
       </div>
     </div>
@@ -482,17 +542,25 @@
           </div>
         </div>
 
+        <!-- Live Diagnostics Box -->
+        <div id="cloud-diagnostic-box" class="p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-[11px] font-mono space-y-1">
+          <div class="text-slate-400 font-sans font-bold mb-1">Status Diagnostics:</div>
+          <div id="diag-auth" class="text-slate-400">Auth: initialiseren...</div>
+          <div id="diag-db" class="text-slate-400">Database: verbinden...</div>
+          <div id="diag-error" class="text-rose-400 hidden">Fout: geen</div>
+        </div>
+
         <p>
-          Wanneer deze pagina draait via <strong>Netlify</strong> of <strong>GitHub Pages</strong>, verbinden alle geopende laptops met dezelfde realtime database. 
+          Wanneer deze pagina draait via <strong>Netlify</strong> of <strong>GitHub Pages</strong>, verbinden alle geopende laptops en telefoons met dezelfde realtime Firestore database.
         </p>
 
         <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-[11px]">
-          <strong class="font-bold block mb-1">💡 Tip voor Firebase Console:</strong>
-          Als stemmen of post-its niet tussen verschillende apparaten updaten, zorg dan in je Firebase Console (project <span class="font-mono">brainstormfow</span>) dat:
-          <ul class="list-disc pl-4 mt-1 space-y-1">
-            <li><strong>Authentication &gt; Sign-in method &gt; Anoniem</strong> op "Ingeschakeld" staat.</li>
-            <li><strong>Firestore Database</strong> is aangemaakt in Testmodus.</li>
-          </ul>
+          <strong class="font-bold block mb-1">💡 Checklist in Firebase Console (project brainstormfow):</strong>
+          <ol class="list-decimal pl-4 space-y-1.5 mt-1">
+            <li><strong>Authentication &gt; Sign-in method:</strong> Zet <em>Anoniem (Anonymous)</em> op <u>Ingeschakeld</u>.</li>
+            <li><strong>Firestore Database:</strong> Is de database al aangemaakt? Zo nee, klik op <em>Database maken</em>.</li>
+            <li><strong>Firestore &gt; Regels (Rules):</strong> Zorg dat leestoegang en schrijftoegang openstaan (zie onderaan).</li>
+          </ol>
         </div>
 
         <div class="flex justify-end pt-2">
@@ -526,12 +594,74 @@
       appId: "1:177825593709:web:d83452b9c815bd76848264"
     };
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'fow-workshop-app';
     let db = null;
     let auth = null;
     let isCloudSyncActive = false;
+    let cloudStatusMessage = "Verbinden...";
+    let currentPillarIndex = 0; // Huidige actieve bladzijde
 
-    // Default Sessie State
+    function playXpChime(amount) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+
+        if (amount >= 50) {
+          // Grote Quest / Taak Fanfare
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.09); // E5
+          osc.frequency.setValueAtTime(783.99, now + 0.18); // G5
+          osc.frequency.setValueAtTime(1046.50, now + 0.27); // C6
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+          osc.start(now);
+          osc.stop(now + 0.65);
+        } else {
+          // XP Coin Ping (+5 of +10)
+          osc.frequency.setValueAtTime(587.33, now); // D5
+          osc.frequency.setValueAtTime(880.00, now + 0.08); // A5
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        }
+      } catch (e) {
+        // Fallback als audio geblokkeerd is
+      }
+    }
+
+    function triggerXpGain(amount, reason) {
+      playXpChime(amount);
+
+      // Pulseer de teller rechtsboven
+      const xpEl = document.getElementById('header-user-xp');
+      if (xpEl) {
+        xpEl.classList.remove('animate-xp');
+        void xpEl.offsetWidth; // Reflow
+        xpEl.classList.add('animate-xp');
+      }
+
+      // Zwevende feestelijke XP badge
+      const floater = document.createElement('div');
+      floater.className = 'fixed z-50 pointer-events-none flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-950 font-black text-xs shadow-2xl shadow-amber-500/30 border border-amber-200 animate-float-xp';
+      floater.style.top = '72px';
+      floater.style.right = '24px';
+      floater.innerHTML = `
+        <i class="fa-solid fa-bolt text-amber-900"></i>
+        <span>+${amount} XP!</span>
+        <span class="text-[10px] font-bold text-slate-800 opacity-80">${reason || ''}</span>
+      `;
+      document.body.appendChild(floater);
+      setTimeout(() => floater.remove(), 1900);
+    }
+
+    // Default Sessie State (Zonder dwingende moonshot teksten)
     const defaultState = {
       activeUser: 'user-1',
       userVotes: {}, // { [userId]: { [noteId]: true } }
@@ -545,7 +675,6 @@
           badgeText: 'text-indigo-400',
           borderCol: 'border-indigo-500/30',
           accentBg: 'bg-indigo-600',
-          visionQuestion: "Wat is onze 'moonshot' als AI autonoom het leeuwendeel van kenniswerk overneemt?",
           isCustom: false
         },
         {
@@ -557,7 +686,6 @@
           badgeText: 'text-emerald-400',
           borderCol: 'border-emerald-500/30',
           accentBg: 'bg-emerald-600',
-          visionQuestion: "Hoe sturen we op menselijke waarde als traditionele SLA's volstrekt achterhaald zijn?",
           isCustom: false
         },
         {
@@ -569,7 +697,6 @@
           badgeText: 'text-amber-400',
           borderCol: 'border-amber-500/30',
           accentBg: 'bg-amber-600',
-          visionQuestion: "Hoe borgen we autonomie en IP als organisaties 100% leunen op Big Tech monopolies?",
           isCustom: false
         },
         {
@@ -581,7 +708,6 @@
           badgeText: 'text-fuchsia-400',
           borderCol: 'border-fuchsia-500/30',
           accentBg: 'bg-fuchsia-600',
-          visionQuestion: "Hoe transformeren we werk zodat transformatie voelt als een game die mensen intrinsiek wíllen spelen?",
           isCustom: false
         }
       ],
@@ -613,10 +739,10 @@
         }
       ],
       quests: [
-        { id: 'quest-1', title: 'Opmaak bestaande documenten herzien en opschonen', desc: 'Huisstijl harmoniseren, templates moderniseren en overtollige ballast verwijderen.', assignedTo: null, xpReward: 50 },
-        { id: 'quest-2', title: 'Onderwerp bedenken voor een eerste kennissessie', desc: 'Interactieve meetup pitch voorbereiden rondom een urgente klantuitdaging.', assignedTo: null, xpReward: 50 },
-        { id: 'quest-3', title: 'Verder uitwerken aan algehele visie document FoW', desc: 'Kernproposities en positionering vastleggen in de overkoepelende 1-pager.', assignedTo: null, xpReward: 50 },
-        { id: 'quest-4', title: 'Teamuitje organiseren', desc: 'Locatie, playful interactie en informele teamconnectie vormgeven.', assignedTo: null, xpReward: 50 }
+        { id: 'quest-1', title: 'Opmaak bestaande documenten herzien en opschonen', assignedTo: null, xpReward: 50 },
+        { id: 'quest-2', title: 'Onderwerp bedenken voor een eerste kennissessie', assignedTo: null, xpReward: 50 },
+        { id: 'quest-3', title: 'Verder uitwerken aan algehele visie document FoW', assignedTo: null, xpReward: 50 },
+        { id: 'quest-4', title: 'Teamuitje organiseren', assignedTo: null, xpReward: 50 }
       ]
     };
 
@@ -659,10 +785,27 @@
         if (desc) desc.innerText = "Project: brainstormfow (Wijzigingen zijn direct overal zichtbaar)";
       } else {
         badge.className = "px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer";
-        text.innerText = "Lokaal Actief (Preview)";
+        text.innerText = cloudStatusMessage || "Lokaal Actief (Check Setup)";
         if (circle) circle.className = "w-3 h-3 rounded-full bg-amber-500";
-        if (title) title.innerText = "In-Memory Modus";
-        if (desc) desc.innerText = "Lokaal actief. Realtime sync schakelt in zodra Firebase auth actief is.";
+        if (title) title.innerText = "Niet Verbonden met Cloud";
+        if (desc) desc.innerText = cloudStatusMessage;
+      }
+    }
+
+    function updateDiagnostics(authText, dbText, errorText = null) {
+      const authEl = document.getElementById('diag-auth');
+      const dbEl = document.getElementById('diag-db');
+      const errEl = document.getElementById('diag-error');
+
+      if (authEl && authText) authEl.innerHTML = authText;
+      if (dbEl && dbText) dbEl.innerHTML = dbText;
+      if (errEl) {
+        if (errorText) {
+          errEl.innerHTML = errorText;
+          errEl.classList.remove('hidden');
+        } else {
+          errEl.classList.add('hidden');
+        }
       }
     }
 
@@ -672,49 +815,78 @@
         auth = getAuth(app);
         db = getFirestore(app);
 
-        // Anonieme inlog
-        await signInAnonymously(auth);
+        updateDiagnostics("Auth: Aanmelden als anonieme gebruiker...", "Database: Wachten op authenticatie...");
 
-        // Document pad volgens RULE 1: /artifacts/{appId}/public/data/{collectionName}/{docId}
-        const boardDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'fow_board', 'state');
+        // 1. Anonieme inlog
+        let userCred;
+        try {
+          userCred = await signInAnonymously(auth);
+          updateDiagnostics("Auth: <span class='text-emerald-400'>✓ Succesvol aangemeld (" + userCred.user.uid.slice(0, 6) + "...)</span>", "Database: Verbinding opzetten...");
+        } catch (authErr) {
+          console.error("Firebase Auth Fout:", authErr);
+          isCloudSyncActive = false;
+          cloudStatusMessage = "Auth Geblokkeerd (Zet Anoniem aan)";
+          updateDiagnostics(
+            "Auth: <span class='text-rose-400 font-bold'>✗ Mislukt</span>",
+            "Database: Geblokkeerd door Auth",
+            "Foutcode: " + authErr.code + " — Zet in Firebase Console 'Anoniem' aan onder Authentication!"
+          );
+          updateSyncIndicator();
+          return;
+        }
 
-        // Luister naar live wijzigingen
+        // 2. Directe document-referentie in collectie 'fow_board'
+        const boardDocRef = doc(db, 'fow_board', 'state');
+
+        // 3. Luister naar live wijzigingen
         onSnapshot(boardDocRef, (snap) => {
           if (snap.exists()) {
             const remoteData = snap.data();
             if (remoteData && remoteData.pillars) {
               const currentActiveUser = state.activeUser;
               state = remoteData;
-              // Behoud lokaal gekozen gebruiker
+              // Behoud lokaal geselecteerde gebruiker
               if (currentActiveUser) state.activeUser = currentActiveUser;
               refreshAllViews();
             }
+            updateDiagnostics(null, "Database: <span class='text-emerald-400'>✓ Realtime verbonden (state actief)</span>");
           } else {
-            // Document bestaat nog niet in Firestore, initialiseer met defaultState
-            pushStateToCloud();
+            // Eerste keer: schrijf initiële default state weg
+            updateDiagnostics(null, "Database: Initiële sessie aanmaken in Firestore...");
+            setDoc(boardDocRef, state).catch(e => console.warn("Init write mislukt:", e));
           }
           isCloudSyncActive = true;
+          cloudStatusMessage = "Live Synchroon";
           updateSyncIndicator();
         }, (err) => {
-          console.warn("Firestore listener melding:", err);
+          console.error("Firestore listener fout:", err);
           isCloudSyncActive = false;
+          cloudStatusMessage = "Database Fout (Check Rules)";
+          updateDiagnostics(
+            null,
+            "Database: <span class='text-rose-400 font-bold'>✗ Geen toegang</span>",
+            "Foutcode: " + err.code + " — Zorg dat Firestore is aangemaakt en Rules op 'allow read, write: if true;' staan!"
+          );
           updateSyncIndicator();
         });
 
       } catch (err) {
-        console.warn("Firebase startup melding:", err);
+        console.error("Firebase startup fout:", err);
         isCloudSyncActive = false;
+        cloudStatusMessage = "Config Fout";
+        updateDiagnostics(null, null, "Algemene opstartfout: " + err.message);
         updateSyncIndicator();
       }
     }
 
     async function pushStateToCloud() {
-      if (!isCloudSyncActive || !db) return;
+      if (!db) return;
       try {
-        const boardDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'fow_board', 'state');
+        const boardDocRef = doc(db, 'fow_board', 'state');
         await setDoc(boardDocRef, state);
       } catch (e) {
-        console.warn("Fout bij synchroniseren naar cloud:", e);
+        console.error("Fout bij synchroniseren naar cloud:", e);
+        showToast("Synchronisatie mislukt: controleer database regels.", "fa-triangle-exclamation");
       }
     }
 
@@ -749,133 +921,174 @@
       }
     }
 
+    window.prevPillar = function() {
+      if (currentPillarIndex > 0) {
+        currentPillarIndex--;
+        renderPillars();
+      }
+    };
+
+    window.nextPillar = function() {
+      if (currentPillarIndex < state.pillars.length - 1) {
+        currentPillarIndex++;
+        renderPillars();
+      }
+    };
+
+    window.goToPillar = function(index) {
+      if (index >= 0 && index < state.pillars.length) {
+        currentPillarIndex = index;
+        renderPillars();
+      }
+    };
+
     function renderPillars() {
       const container = document.getElementById('pillars-container');
+      const tabsContainer = document.getElementById('pillar-page-tabs');
+      const pageIndicator = document.getElementById('pillar-page-indicator');
       if (!container) return;
 
+      // Bewaak array bounds
+      if (currentPillarIndex >= state.pillars.length) currentPillarIndex = Math.max(0, state.pillars.length - 1);
+
+      // 1. Update Stepper Tabs
+      if (tabsContainer) {
+        tabsContainer.innerHTML = '';
+        state.pillars.forEach((p, idx) => {
+          const isActive = idx === currentPillarIndex;
+          const btn = document.createElement('button');
+          btn.onclick = () => goToPillar(idx);
+          btn.className = `px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            isActive ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+          }`;
+          btn.innerHTML = `<span>${idx + 1}.</span> <span>${p.name}</span>`;
+          tabsContainer.appendChild(btn);
+        });
+      }
+
+      if (pageIndicator) {
+        pageIndicator.innerText = `Bladzijde ${currentPillarIndex + 1} van ${state.pillars.length}`;
+      }
+
+      const activePillar = state.pillars[currentPillarIndex];
+      if (!activePillar) return;
+
+      // 2. Render de geselecteerde Pilaar Bladzijde
       container.innerHTML = '';
 
-      state.pillars.forEach(pillar => {
-        const colDiv = document.createElement('div');
-        colDiv.className = `flex flex-col bg-slate-900/80 rounded-2xl border ${pillar.borderCol || 'border-slate-800'} overflow-hidden shadow-lg`;
+      const pageCard = document.createElement('div');
+      pageCard.className = `bg-slate-900/90 rounded-3xl border ${activePillar.borderCol || 'border-slate-800'} overflow-hidden shadow-2xl p-5 lg:p-6 space-y-6`;
 
-        // Pillar Header
-        const headerDiv = document.createElement('div');
-        headerDiv.className = `p-4 border-b border-slate-800/80 bg-slate-950/40 relative`;
-        
-        let deleteBtnHtml = pillar.isCustom ? `
-          <button onclick="deletePillar('${pillar.id}')" class="text-slate-500 hover:text-red-400 p-1 text-xs" title="Pilaar verwijderen">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
-        ` : '';
+      // Page Header
+      let deleteBtnHtml = activePillar.isCustom ? `
+        <button onclick="deletePillar('${activePillar.id}')" class="text-slate-500 hover:text-red-400 px-2 py-1 rounded-lg text-xs bg-slate-950 border border-slate-800 transition-colors" title="Pilaar verwijderen">
+          <i class="fa-solid fa-trash-can mr-1"></i> Verwijder Pilaar
+        </button>
+      ` : '';
 
-        headerDiv.innerHTML = `
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${pillar.badgeBg || 'bg-indigo-500/10'} ${pillar.badgeText || 'text-indigo-400'} border border-current/20">
-              Pilaar
-            </span>
-            ${deleteBtnHtml}
-          </div>
-          <h3 class="text-base font-black text-white">${pillar.name}</h3>
-          <p class="text-[11px] text-slate-400 mt-0.5 leading-snug">${pillar.tagline || ''}</p>
-
-          <!-- Vision & Moonshot Question Banner -->
-          <div class="mt-3 p-2.5 rounded-xl bg-gradient-to-r from-purple-950/40 to-slate-900 border border-purple-500/30 text-[11px] text-purple-200">
-            <div class="font-bold flex items-center gap-1.5 text-purple-300 mb-0.5">
-              <i class="fa-solid fa-rocket text-[10px]"></i>
-              <span>5. Toekomst & Moonshot</span>
+      pageCard.innerHTML = `
+        <div class="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${activePillar.badgeBg || 'bg-indigo-500/10'} ${activePillar.badgeText || 'text-indigo-400'} border border-current/20">
+                Bladzijde ${currentPillarIndex + 1} • Pilaar
+              </span>
             </div>
-            <p class="italic text-slate-300">"${pillar.visionQuestion || 'Wat is onze radicale visie voor deze pilaar?'}"</p>
+            <h3 class="text-2xl font-black text-white">${activePillar.name}</h3>
+            <p class="text-xs text-slate-400 mt-1">${activePillar.tagline || 'Geen toelichting'}</p>
           </div>
+
+          <div class="flex items-center gap-2">
+            ${deleteBtnHtml}
+            <button onclick="openAddNoteModal('${activePillar.id}')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all">
+              <i class="fa-solid fa-plus"></i>
+              <span>+ Post-It op deze Bladzijde</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 5 Workshop Kolommen per Thema (Betekenis, Wel, Niet, Dilemma, Toekomst) -->
+        <div id="pillar-topics-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start">
+        </div>
+      `;
+
+      container.appendChild(pageCard);
+
+      // 3. Vul de 5 kolommen
+      const topicsGrid = pageCard.querySelector('#pillar-topics-grid');
+      const topics = [
+        { key: 'meaning', title: '1. Betekenis', subtitle: 'Wat betekent dit voor ons?', badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+        { key: 'wel', title: '2. Wat doen we WÉL?', subtitle: 'Onderwerpen & waarde', badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+        { key: 'niet', title: '3. Wat doen we NIET?', subtitle: 'Grenzen & uitsluitingen', badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/30' },
+        { key: 'dilemma', title: '4. Dilemma & Spanning', subtitle: 'Lastige keuzes & offers', badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+        { key: 'moonshot', title: '5. Toekomst', subtitle: 'Visie, doorkijk & ambitie', badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30' }
+      ];
+
+      topics.forEach(topic => {
+        const topicCol = document.createElement('div');
+        topicCol.className = 'bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3 flex flex-col min-h-[380px] space-y-3';
+
+        const categoryNotes = state.notes.filter(n => n.pillarId === activePillar.id && n.category === topic.key);
+
+        topicCol.innerHTML = `
+          <div class="pb-2 border-b border-slate-800">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${topic.badgeClass}">
+              ${topic.title}
+            </span>
+            <div class="text-[11px] text-slate-400 mt-1 font-medium leading-tight">${topic.subtitle}</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">${categoryNotes.length} post-its</div>
+          </div>
+
+          <div class="flex-1 space-y-2.5 overflow-y-auto max-h-[500px] notes-list-container">
+          </div>
+
+          <button onclick="openAddNoteModal('${activePillar.id}', '${topic.key}')" class="w-full py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-[11px] font-semibold flex items-center justify-center gap-1 border border-slate-800 transition-all">
+            <i class="fa-solid fa-plus text-[10px]"></i>
+            <span>Plak Post-it</span>
+          </button>
         `;
-        colDiv.appendChild(headerDiv);
 
-        // Sticky Notes Container
-        const notesContainer = document.createElement('div');
-        notesContainer.className = 'p-3 flex-1 flex flex-col space-y-3 min-h-[300px] max-h-[650px] overflow-y-auto';
+        const notesList = topicCol.querySelector('.notes-list-container');
 
-        // Filter notes for this pillar
-        const pillarNotes = state.notes.filter(n => n.pillarId === pillar.id);
-
-        if (pillarNotes.length === 0) {
-          notesContainer.innerHTML = `
-            <div class="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-600 border border-dashed border-slate-800/80 rounded-xl">
-              <i class="fa-regular fa-note-sticky text-2xl mb-2"></i>
-              <p class="text-xs">Nog geen post-its geplakt.</p>
-              <button onclick="openAddNoteModal('${pillar.id}')" class="mt-2 text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline">
-                + Eerste post-it plakken
-              </button>
+        if (categoryNotes.length === 0) {
+          notesList.innerHTML = `
+            <div class="text-center py-8 text-slate-600 text-xs italic">
+              Nog geen post-its
             </div>
           `;
         } else {
-          pillarNotes.forEach(note => {
-            const noteCard = document.createElement('div');
-            
-            // Category badges & colors
-            let categoryBadge = '';
-            let cardAccent = 'border-slate-800';
-            if (note.category === 'meaning') {
-              categoryBadge = '<span class="bg-blue-500/20 text-blue-300 border border-blue-500/30">1. Betekenis</span>';
-            } else if (note.category === 'wel') {
-              categoryBadge = '<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">2. Wel doen</span>';
-            } else if (note.category === 'niet') {
-              categoryBadge = '<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30">3. Niet doen</span>';
-            } else if (note.category === 'dilemma') {
-              categoryBadge = '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30">4. Dilemma</span>';
-            } else if (note.category === 'moonshot') {
-              categoryBadge = '<span class="bg-purple-500/20 text-purple-300 border border-purple-500/30">5. 🚀 Moonshot</span>';
-              cardAccent = 'border-purple-500/40';
-            }
-
-            // Check if active user has voted on this note
+          categoryNotes.forEach(note => {
             const hasVoted = state.userVotes[state.activeUser] && state.userVotes[state.activeUser][note.id];
             const voteBtnClass = hasVoted 
               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700';
+              : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800';
 
-            noteCard.className = `sticky-card p-3 rounded-xl bg-slate-950/90 border ${cardAccent} shadow flex flex-col justify-between space-y-2.5`;
-            noteCard.innerHTML = `
-              <div>
-                <div class="flex items-center justify-between gap-1 mb-1.5">
-                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full ${categoryBadge.replace('<span class="', '').replace('</span>', '')}">
-                    ${categoryBadge}
-                  </span>
-                  <button onclick="deleteNote('${note.id}')" class="text-slate-600 hover:text-red-400 p-0.5 text-xs transition-colors" title="Verwijderen">
-                    <i class="fa-solid fa-xmark"></i>
-                  </button>
-                </div>
-                <p class="text-xs text-slate-200 leading-snug whitespace-pre-wrap">${note.content}</p>
+            const card = document.createElement('div');
+            card.className = 'sticky-card p-3 rounded-xl bg-slate-900 border border-slate-800 shadow flex flex-col justify-between space-y-2';
+            card.innerHTML = `
+              <div class="flex items-start justify-between gap-1">
+                <p class="text-xs text-slate-200 leading-snug whitespace-pre-wrap flex-1">${note.content}</p>
+                <button onclick="deleteNote('${note.id}')" class="text-slate-600 hover:text-red-400 p-0.5 text-xs transition-colors ml-1" title="Verwijderen">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
               </div>
 
               <div class="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px]">
-                <span class="text-slate-400 font-medium truncate max-w-[120px]">
+                <span class="text-slate-400 font-medium truncate max-w-[90px]">
                   <i class="fa-solid fa-user-circle text-[9px] mr-1 text-slate-500"></i>${note.authorName || 'Anoniem'}
                 </span>
                 
-                <button onclick="castVote('${note.id}')" class="px-2 py-1 rounded-lg ${voteBtnClass} flex items-center gap-1 font-bold transition-transform active:scale-95" title="Stem op deze post-it (+5 XP voor jou)">
+                <button onclick="castVote('${note.id}')" class="px-2 py-0.5 rounded-lg ${voteBtnClass} flex items-center gap-1 font-bold transition-transform active:scale-95" title="Stem op deze post-it (+5 XP)">
                   <i class="fa-solid fa-thumbs-up text-[9px]"></i>
                   <span>${note.votes || 0}</span>
                 </button>
               </div>
             `;
-            notesContainer.appendChild(noteCard);
+            notesList.appendChild(card);
           });
         }
 
-        colDiv.appendChild(notesContainer);
-
-        // Column Footer Button
-        const footerDiv = document.createElement('div');
-        footerDiv.className = 'p-3 bg-slate-950/60 border-t border-slate-800';
-        footerDiv.innerHTML = `
-          <button onclick="openAddNoteModal('${pillar.id}')" class="w-full py-1.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-700/60">
-            <i class="fa-solid fa-plus text-xs"></i>
-            <span>Post-It Plakken</span>
-          </button>
-        `;
-        colDiv.appendChild(footerDiv);
-
-        container.appendChild(colDiv);
+        topicsGrid.appendChild(topicCol);
       });
     }
 
@@ -953,14 +1166,13 @@
       if (statVotesEl) statVotesEl.innerText = totalVotes;
       if (statXpEl) statXpEl.innerText = totalXPAll;
 
-      // 2. Render Team Quests (+50 XP)
+      // 2. Render Team Quests (+50 XP) — Zonder witte beschrijvingsteksten
       const questsContainer = document.getElementById('quests-container');
       if (questsContainer) {
         questsContainer.innerHTML = '';
         state.quests.forEach(quest => {
           const assignedUser = state.participants.find(p => p.id === quest.assignedTo);
           const isAssigned = !!assignedUser;
-          const isAssignedToActive = quest.assignedTo === state.activeUser;
 
           const questCard = document.createElement('div');
           questCard.className = `p-4 rounded-2xl bg-slate-950 border ${isAssigned ? 'border-amber-500/40 bg-amber-500/5' : 'border-slate-800'} flex flex-col justify-between space-y-3`;
@@ -971,14 +1183,11 @@
           });
 
           questCard.innerHTML = `
-            <div>
-              <div class="flex items-center justify-between gap-2 mb-1">
-                <h4 class="text-xs font-bold text-white">${quest.title}</h4>
-                <span class="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  +50 XP
-                </span>
-              </div>
-              <p class="text-[11px] text-slate-400">${quest.desc}</p>
+            <div class="flex items-center justify-between gap-2">
+              <h4 class="text-xs font-bold text-white leading-snug flex-1">${quest.title}</h4>
+              <span class="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap">
+                +${quest.xpReward || 50} XP
+              </span>
             </div>
 
             <div class="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
@@ -1094,7 +1303,7 @@
     };
 
     // Modal Helpers
-    window.openAddNoteModal = function(preferredPillarId = null) {
+    window.openAddNoteModal = function(preferredPillarId = null, preferredCategory = null) {
       const select = document.getElementById('modal-note-pillar');
       if (select) {
         select.innerHTML = '';
@@ -1105,6 +1314,11 @@
           if (preferredPillarId && p.id === preferredPillarId) opt.selected = true;
           select.appendChild(opt);
         });
+      }
+
+      const catSelect = document.getElementById('modal-note-category');
+      if (catSelect && preferredCategory) {
+        catSelect.value = preferredCategory;
       }
 
       const activeUser = state.participants.find(p => p.id === state.activeUser);
@@ -1150,7 +1364,8 @@
       closeNoteModal();
       pushStateToCloud();
       refreshAllViews();
-      showToast(`Post-it geplaatst! +10 XP toegekend aan ${activeUser.name}`, 'fa-bolt');
+      triggerXpGain(10, 'Post-it geplaatst!');
+      showToast(`Post-it geplaatst! +10 XP voor ${activeUser.name}`, 'fa-bolt');
     };
 
     window.deleteNote = function(noteId) {
@@ -1177,6 +1392,7 @@
         // Stem toekennen
         state.userVotes[state.activeUser][noteId] = true;
         targetNote.votes = (targetNote.votes || 0) + 1;
+        triggerXpGain(5, 'Stem uitgebracht!');
         showToast('Stem uitgebracht! +5 XP verdiend', 'fa-thumbs-up');
       }
 
@@ -1187,7 +1403,6 @@
     window.openAddPillarModal = function() {
       document.getElementById('modal-pillar-name').value = '';
       document.getElementById('modal-pillar-tagline').value = '';
-      document.getElementById('modal-pillar-vision').value = '';
       document.getElementById('modal-pillar')?.classList.remove('hidden');
     };
 
@@ -1199,7 +1414,6 @@
       const name = document.getElementById('modal-pillar-name')?.value?.trim();
       const tagline = document.getElementById('modal-pillar-tagline')?.value?.trim();
       const color = document.getElementById('modal-pillar-color')?.value || 'violet';
-      const vision = document.getElementById('modal-pillar-vision')?.value?.trim();
 
       if (!name) {
         showToast('Vul ten minste de naam van de pilaar in.', 'fa-triangle-exclamation');
@@ -1223,9 +1437,11 @@
         badgeBg: colorStyles.badgeBg,
         badgeText: colorStyles.badgeText,
         borderCol: colorStyles.borderCol,
-        visionQuestion: vision || `Welke moonshot of transformatie drijft ${name} richting 2030?`,
         isCustom: true
       });
+
+      // Spring direct naar de nieuw aangemaakte pilaar
+      currentPillarIndex = state.pillars.length - 1;
 
       closeAddPillarModal();
       pushStateToCloud();
@@ -1235,11 +1451,71 @@
 
     window.deletePillar = function(pillarId) {
       state.pillars = state.pillars.filter(p => p.id !== pillarId);
-      // Verwijder ook bijbehorende notes
       state.notes = state.notes.filter(n => n.pillarId !== pillarId);
+      if (currentPillarIndex >= state.pillars.length) currentPillarIndex = Math.max(0, state.pillars.length - 1);
       pushStateToCloud();
       refreshAllViews();
       showToast('Pilaar verwijderd.', 'fa-trash-can');
+    };
+
+    window.openAddQuestModal = function() {
+      const input = document.getElementById('modal-quest-title');
+      if (input) input.value = '';
+      document.getElementById('modal-quest')?.classList.remove('hidden');
+    };
+
+    window.closeAddQuestModal = function() {
+      document.getElementById('modal-quest')?.classList.add('hidden');
+    };
+
+    window.saveNewQuest = function() {
+      const title = document.getElementById('modal-quest-title')?.value?.trim();
+      if (!title) {
+        showToast('Typ eerst de titel van de taak!', 'fa-triangle-exclamation');
+        return;
+      }
+
+      const newQuest = {
+        id: 'quest-' + Date.now(),
+        title: title,
+        assignedTo: null,
+        xpReward: 50
+      };
+
+      state.quests.push(newQuest);
+      closeAddQuestModal();
+      pushStateToCloud();
+      refreshAllViews();
+      showToast(`Taak '${title}' toegevoegd!`, 'fa-bullseye');
+    };
+
+    window.claimQuest = function(questId) {
+      const quest = state.quests.find(q => q.id === questId);
+      if (!quest) return;
+
+      quest.assignedTo = state.activeUser;
+      pushStateToCloud();
+      refreshAllViews();
+      triggerXpGain(50, 'Taak geclaimd!');
+      showToast(`Taak geclaimd! +50 XP verdiend voor jouw profiel.`, 'fa-award');
+    };
+
+    window.assignQuest = function(questId, userId) {
+      const quest = state.quests.find(q => q.id === questId);
+      if (!quest) return;
+
+      quest.assignedTo = userId || null;
+      pushStateToCloud();
+      refreshAllViews();
+      if (userId) {
+        const user = state.participants.find(p => p.id === userId);
+        if (userId === state.activeUser) {
+          triggerXpGain(50, 'Taak toegewezen!');
+        }
+        showToast(`Taak toegewezen aan ${user ? user.name : 'deelnemer'} (+50 XP).`, 'fa-award');
+      } else {
+        showToast('Taak vrijgegeven.', 'fa-rotate-left');
+      }
     };
 
     window.openAddParticipantModal = function() {
@@ -1314,31 +1590,6 @@
       showToast(`Profiel gewisseld naar: ${user ? user.name : 'Deelnemer'}`, 'fa-user-check');
     };
 
-    window.claimQuest = function(questId) {
-      const quest = state.quests.find(q => q.id === questId);
-      if (!quest) return;
-
-      quest.assignedTo = state.activeUser;
-      pushStateToCloud();
-      refreshAllViews();
-      showToast(`Taak geclaimd! +50 XP verdiend voor jouw profiel.`, 'fa-award');
-    };
-
-    window.assignQuest = function(questId, userId) {
-      const quest = state.quests.find(q => q.id === questId);
-      if (!quest) return;
-
-      quest.assignedTo = userId || null;
-      pushStateToCloud();
-      refreshAllViews();
-      if (userId) {
-        const user = state.participants.find(p => p.id === userId);
-        showToast(`Taak toegewezen aan ${user ? user.name : 'deelnemer'} (+50 XP).`, 'fa-award');
-      } else {
-        showToast('Taak vrijgegeven.', 'fa-rotate-left');
-      }
-    };
-
     window.clearAllNotes = function() {
       if (state.notes.length === 0) {
         showToast('Bord is al leeg.', 'fa-info');
@@ -1365,6 +1616,7 @@
         closeAddPillarModal();
         closeParticipantModal();
         closeCloudModal();
+        closeAddQuestModal();
       }
     });
 
